@@ -196,7 +196,7 @@ shadow-card {
 
 ## License
 
-MIT © [Your Name]
+MIT © PowerDuckie
 
 ---
 
