@@ -1,0 +1,49 @@
+{
+    "name": "shadow-cards-batch",
+    "version": "1.0.0",
+    "description": "Batch create and manage editable cards with Shadow DOM isolation",
+    "main": "dist/index.cjs.js",
+    "module": "dist/index.esm.js",
+    "browser": "dist/index.umd.js",
+    "exports": {
+        ".": {
+            "import": "./dist/index.esm.js",
+            "require": "./dist/index.cjs.js",
+            "browser": "./dist/index.umd.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "rollup -c rollup.config.js",
+        "build-publish": "npm version patch && rollup -c rollup.config.js && npm publish"
+    },
+    "keywords": [
+        "shadow-dom",
+        "custom-elements",
+        "batch-cards",
+        "editable-cards",
+        "web-components"
+    ],
+    "author": "",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-repo/shadow-cards-batch.git"
+    },
+    "bugs": {
+        "url": "https://github.com/your-repo/shadow-cards-batch/issues"
+    },
+    "homepage": "https://github.com/your-repo/shadow-cards-batch#readme",
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^28.0.5",
+        "@rollup/plugin-terser": "^0.4.4",
+        "@rollup/plugin-node-resolve": "^16.0.3",
+        "rollup": "^4.44.1"
+    },
+    "dependencies": {
+        "uuid": "^13.0.0"
+    }
+}

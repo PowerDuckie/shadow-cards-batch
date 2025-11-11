@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Shadow Cards Batch - Control Demo</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .control-panel {
+            margin-bottom: 20px;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .control-group {
+            margin-bottom: 1.2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+
+        .control-group:last-child {
+            border-bottom: none;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #1e293b;
+            font-size: 1.1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            margin-top: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        input,
+        select,
+        textarea {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button.secondary {
+            background: #f3f4f6;
+            color: #1e293b;
+        }
+
+        button.secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .cards-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+        }
+
+        .card-selector {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="control-panel">
+        <div class="control-group">
+            <h3>Card Management</h3>
+            <div class="button-group">
+                <button id="add-card">Add New Card</button>
+                <button id="destroy-all" class="secondary">Destroy All Cards</button>
+            </div>
+        </div>
+        <div class="control-group">
+            <h3>Target Card Selection</h3>
+            <select id="card-selector" class="card-selector">
+                <option value="">-- Select a card --</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <h3>Content Control</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="title-input">Title</label>
+                    <input type="text" id="title-input" placeholder="Update title">
+                </div>
+                <div class="form-group">
+                    <label for="summary-input">Summary</label>
+                    <input type="text" id="summary-input" placeholder="Update summary">
+                </div>
+                <div class="form-group">
+                    <label for="author-input">Author</label>
+                    <input type="text" id="author-input" placeholder="Update author">
+                </div>
+                <div class="form-group">
+                    <label for="date-input">Date</label>
+                    <input type="text" id="date-input" placeholder="Update date">
+                </div>
+            </div>
+            <button id="update-content" class="secondary">Apply Content Changes</button>
+        </div>
+        <div class="control-group">
+            <h3>Style Control</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="border-color">Border Color</label>
+                    <input type="color" id="border-color" value="#e2e8f0">
+                </div>
+                <div class="form-group">
+                    <label for="hover-color">Hover Border Color</label>
+                    <input type="color" id="hover-color" value="#3b82f6">
+                </div>
+                <div class="form-group">
+                    <label for="border-radius">Border Radius (px)</label>
+                    <input type="number" id="border-radius" value="8" min="0" max="20">
+                </div>
+                <div class="form-group">
+                    <label for="loading-bg">Loading Background</label>
+                    <input type="color" id="loading-bg" value="#ffffff">
+                </div>
+                <div class="form-group">
+                    <label for="spinner-color">Spinner Color</label>
+                    <input type="color" id="spinner-color" value="#3b82f6">
+                </div>
+                <div class="form-group">
+                    <label for="loading-text">Loading Text</label>
+                    <input type="text" id="loading-text" value="Processing...">
+                </div>
+                <div class="form-group">
+                    <label for="card-width">Card Width (px)</label>
+                    <input type="number" id="card-width" value="200" min="100" max="500">
+                </div>
+            </div>
+            <button id="update-style" class="secondary">Apply Style Changes</button>
+        </div>
+    </div>
+    <div class="cards-container" id="cards-container"></div>
+    <script type="module">
+        import ShadowCard from './dist/index.esm.js';
+
+        // Store all card instances
+        const allCards = [];
+        let selectedCard = null;
+
+        // Initialize card selector dropdown
+        function updateCardSelector() {
+            const selector = document.getElementById('card-selector');
+            selector.innerHTML = '<option value="">-- Select a card --</option>';
+
+            allCards.forEach((card, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Card ${index + 1} (${card.id.substring(0, 8)}...)`;
+                selector.appendChild(option);
+            });
+        }
+
+        // 1. Batch create initial cards
+        const initialCards = [
+            {
+                container: document.getElementById('cards-container'),
+                targetWidth: 200,
+                html: `
+                    <div class="article-card">
+                        <h3 data-field="title" contenteditable="true">Tech Trend Analysis</h3>
+                        <div class="meta">
+                            <span data-field="date" contenteditable="true">2025-11-11</span>
+                            <span data-field="author" contenteditable="true">Tech Expert</span>
+                        </div>
+                        <img data-img="cover" src="https://picsum.photos/id/1/600/300" alt="Cover">
+                        <p data-field="summary" contenteditable="true">Exploring future technology directions...</p>
+                    </div>
+                `,
+                css: `
+                    .article-card {
+                        background: linear-gradient(135deg, #3B82F6, #4F46E5);
+                        padding: 1rem;
+                        color: white;
+                        border-radius: 8px;
+                    }
+                    .meta {
+                        display: flex;
+                        gap: 10px;
+                        font-size: 0.8rem;
+                        margin: 0.5rem 0;
+                    }
+                    img {
+                        width: 100%;
+                        border-radius: 4px;
+                        margin: 1rem 0;
+                    }
+                `,
+                data: {
+                    title: '2025 Tech Trend Analysis',
+                    date: '2025-11-11',
+                    author: 'Tech Expert',
+                    summary: 'The integration of AI and Web technologies will change the future...'
+                },
+                styles: {
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    hoverBorderColor: '#3b82f6',
+                    loadingBg: '#ffffff',
+                    loadingText: 'Processing...',
+                    loadingSpinnerColor: '#3b82f6'
+                }
+            },
+            {
+                container: document.getElementById('cards-container'),
+                targetWidth: 200,
+                html: `
+                    <div class="product-card">
+                        <h4 data-field="name" contenteditable="true">Smart Watch</h4>
+                        <img data-img="product" src="https://picsum.photos/id/20/600/300" alt="Product Image">
+                        <div data-field="price" contenteditable="true">¥1999</div>
+                        <button data-img="buy">Buy Now</button>
+                    </div>
+                `,
+                css: `
+                    .product-card {
+                        background: white;
+                        border: 1px solid #eee;
+                        padding: 1rem;
+                        text-align: center;
+                    }
+                    img {
+                        width: 100%;
+                        height: 120px;
+                        object-fit: cover;
+                    }
+                    [data-field="price"] {
+                        color: #e53e3e;
+                        font-weight: bold;
+                        margin: 0.5rem 0;
+                    }
+                    button {
+                        background: #3182ce;
+                        color: white;
+                        border: none;
+                        padding: 0.5rem 1rem;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                `,
+                styles: {
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    hoverBorderColor: '#3b82f6',
+                    loadingBg: '#ffffff',
+                    loadingText: 'Processing...',
+                    loadingSpinnerColor: '#3b82f6'
+                }
+            }
+        ];
+
+        // Batch create and store instances
+        allCards.push(...ShadowCard.batchCreate(initialCards));
+        updateCardSelector();
+
+        // 2. Add event listeners to all cards
+        allCards.forEach(card => {
+            card.on('content-change', (e) => {
+                console.log(`Card [${e.detail.cardId}] content changed:`, e.detail);
+            });
+
+            card.on('img-click', (e) => {
+                console.log(`Card [${e.detail.cardId}] image clicked:`, e.detail.imgKey);
+                if (e.detail.imgKey === 'cover' || e.detail.imgKey === 'product') {
+                    e.detail.element.src = `https://picsum.photos/id/${Math.floor(Math.random() * 100)}/600/300`;
+                }
+            });
+
+            card.on('error', (e) => {
+                console.error(`Card [${e.detail.cardId}] error:`, e.detail.message);
+            });
+        });
+
+        // 3. Event Listeners for Controls
+        document.getElementById('card-selector').addEventListener('change', (e) => {
+            const index = parseInt(e.target.value);
+            selectedCard = index >= 0 ? allCards[index] : null;
+
+            // Fill form with current values if card is selected
+            if (selectedCard) {
+                const data = selectedCard.data;
+                document.getElementById('title-input').value = data.title || '';
+                document.getElementById('summary-input').value = data.summary || '';
+                document.getElementById('author-input').value = data.author || '';
+                document.getElementById('date-input').value = data.date || '';
+            }
+        });
+
+        document.getElementById('add-card').addEventListener('click', () => {
+            const newCard = new ShadowCard({
+                container: document.getElementById('cards-container'),
+                targetWidth: 200,
+                html: `
+                    <div class="dynamic-card">
+                        <h4 data-field="title" contenteditable="true">Dynamic Card</h4>
+                        <p data-field="content" contenteditable="true">This is a dynamically created card</p>
+                        <div class="meta">
+                            <span data-field="date" contenteditable="true">${new Date().toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                `,
+                css: `
+                    .dynamic-card {
+                        background: #f0fff4;
+                        border: 1px solid #c6f6d5;
+                        padding: 1rem;
+                    }
+                    .meta {
+                        font-size: 0.8rem;
+                        color: #64748b;
+                        margin-top: 0.5rem;
+                    }
+                `,
+                data: {
+                    title: 'New Dynamic Card',
+                    content: 'Customize me using the control panel!',
+                    date: new Date().toLocaleDateString()
+                },
+                styles: {
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    hoverBorderColor: '#3b82f6',
+                    loadingBg: '#ffffff',
+                    loadingText: 'Loading...',
+                    loadingSpinnerColor: '#3b82f6'
+                }
+            });
+
+            newCard.on('content-change', (e) => {
+                console.log(`Dynamic card [${e.detail.cardId}] changed:`, e.detail);
+            });
+
+            allCards.push(newCard);
+            updateCardSelector();
+        });
+
+        document.getElementById('destroy-all').addEventListener('click', () => {
+            allCards.forEach(card => card.destroy());
+            allCards.length = 0;
+            updateCardSelector();
+            console.log('All cards have been destroyed');
+        });
+
+        document.getElementById('update-content').addEventListener('click', () => {
+            if (!selectedCard) {
+                alert('Please select a card first');
+                return;
+            }
+
+            const contentUpdates = {
+                title: document.getElementById('title-input').value,
+                summary: document.getElementById('summary-input').value,
+                author: document.getElementById('author-input').value,
+                date: document.getElementById('date-input').value
+            };
+
+            // Remove empty values to avoid overwriting existing content unintentionally
+            Object.keys(contentUpdates).forEach(key => {
+                if (contentUpdates[key] === '') delete contentUpdates[key];
+            });
+
+            selectedCard.setContent(contentUpdates);
+        });
+
+        document.getElementById('update-style').addEventListener('click', () => {
+            if (!selectedCard) {
+                alert('Please select a card first');
+                return;
+            }
+
+            const styleUpdates = {
+                borderColor: document.getElementById('border-color').value,
+                hoverBorderColor: document.getElementById('hover-color').value,
+                borderRadius: `${document.getElementById('border-radius').value}px`,
+                loadingBg: document.getElementById('loading-bg').value,
+                loadingSpinnerColor: document.getElementById('spinner-color').value,
+                loadingText: document.getElementById('loading-text').value
+            };
+
+            // Apply style updates
+            selectedCard.setCssVariables(styleUpdates);
+
+            // Update width separately
+            const newWidth = parseInt(document.getElementById('card-width').value);
+            if (!isNaN(newWidth)) {
+                selectedCard.resize(newWidth);
+            }
+        });
+    </script>
+</body>
+
+</html>
