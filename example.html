@@ -212,7 +212,7 @@
         const initialCards = [
             {
                 container: document.getElementById('cards-container'),
-                targetWidth: 200,
+                targetWidth: 160,
                 html: `
                     <div class="article-card">
                         <h3 data-field="title" data-editable="open">Tech Trend Analysis</h3>
@@ -263,7 +263,7 @@
             },
             {
                 container: document.getElementById('cards-container'),
-                targetWidth: 200,
+                targetWidth: 160,
                 editable: true,
                 html: `
                     <div class="product-card">
@@ -312,7 +312,7 @@
                 }
             }, {
                 container: document.getElementById('cards-container'),
-                targetWidth: 200,
+                targetWidth: 160,
                 html: `
                    <div class="container" style="transform-origin: top left; ">
             <div class="sd-post-card">
@@ -805,7 +805,7 @@
         document.getElementById('add-card').addEventListener('click', () => {
             const newCard = new ShadowCard({
                 container: document.getElementById('cards-container'),
-                targetWidth: 200,
+                targetWidth: 160,
                 html: `
                     <div class="dynamic-card">
                         <h4 data-field="title" data-editable="open">Dynamic Card</h4>
