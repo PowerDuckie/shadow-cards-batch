@@ -10,32 +10,6 @@ export function generateUniqueId() {
 }
 
 /**
- * Calculates scaling ratio and dimensions for proper card sizing
- * @param {HTMLElement} container - Content container element
- * @param {number} targetWidth - Desired display width
- * @returns {Object} Scaling details { scale, width, height }
- */
-export function calculateScaling(container, targetWidth) {
-    if (!container || !(container instanceof HTMLElement)) {
-        throw new Error(ERRORMessages.INVALID_CONTAINER);
-    }
-    if (typeof targetWidth !== 'number' || targetWidth <= 0) {
-        throw new Error(ERRORMessagesERROR_MESSAGES.INVALID_TARGET_WIDTH);
-    }
-
-    // Prevent division by zero with minimum dimension of 1px
-    const originalWidth = Math.max(1, container.offsetWidth);
-    const originalHeight = Math.max(1, container.offsetHeight);
-    const scale = targetWidth / originalWidth;
-
-    return {
-        scale: Number(scale.toFixed(6)), // Limit precision to 6 decimal places
-        width: Math.round(originalWidth * scale),
-        height: Math.round(originalHeight * scale)
-    };
-}
-
-/**
  * Input validation utility for ensuring type safety and valid values
  */
 export const Validator = {
