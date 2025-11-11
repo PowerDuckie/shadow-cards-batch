@@ -131,8 +131,11 @@ export class ShadowCard {
             width:640px;
             transform-origin: top left;
             transform: scale(1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        
+
         #loading-overlay {
             position: absolute;
             inset: 0;
@@ -500,8 +503,8 @@ export class ShadowCard {
             }
 
             // Core: Calculate the scaling ratio (target width / original content width)
-            const scale = this.options.targetWidth / originalContentWidth;
-
+            const scale = Math.min(1, this.options.targetWidth / originalContentWidth);
+            
             // 4. Apply scaling and adjust height
             this.innerContainer.style.transform = `scale(${scale})`;
             this.innerContainer.style.transformOrigin = 'top left'; // Ensure that the scaling starts from the top left corner
