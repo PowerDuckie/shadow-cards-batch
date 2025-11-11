@@ -215,13 +215,13 @@
                 targetWidth: 200,
                 html: `
                     <div class="article-card">
-                        <h3 data-field="title" contenteditable="true">Tech Trend Analysis</h3>
+                        <h3 data-field="title" data-editable="open">Tech Trend Analysis</h3>
                         <div class="meta">
-                            <span data-field="date" contenteditable="true">2025-11-11</span>
-                            <span data-field="author" contenteditable="true">Tech Expert</span>
+                            <span data-field="date" data-editable="open">2025-11-11</span>
+                            <span data-field="author" data-editable="open">Tech Expert</span>
                         </div>
                         <img data-img="cover" src="https://picsum.photos/id/1/600/300" alt="Cover">
-                        <p data-field="summary" contenteditable="true">Exploring future technology directions...</p>
+                        <p data-field="summary" data-editable="open">Exploring future technology directions...</p>
                     </div>
                 `,
                 css: `
@@ -264,11 +264,12 @@
             {
                 container: document.getElementById('cards-container'),
                 targetWidth: 200,
+                editable: true,
                 html: `
                     <div class="product-card">
-                        <h4 data-field="name" contenteditable="true">Smart Watch</h4>
+                        <h4 data-field="name" data-editable="open">Smart Watch</h4>
                         <img data-img="product" src="https://picsum.photos/id/20/600/300" alt="Product Image">
-                        <div data-field="price" contenteditable="true">¥1999</div>
+                        <div data-field="price" data-editable="open">¥1999</div>
                         <button data-img="buy">Buy Now</button>
                     </div>
                 `,
@@ -321,7 +322,7 @@
                 <div class="sd-post-card-decoration sd-post-card-square"
                     style="width: 6rem; height: 6rem; bottom: -1.5rem; left: -1.5rem;"></div>
                 <div class="sd-post-card-bg">
-                    <img src="https://p3-doubao-search-sign.byteimg.com/labis/20b35a7555983733c1ee638cd558da3a~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782305&amp;x-signature=ktKly52Djcoas4GpV9bkHp7f0eo%3D"
+                    <img data-img="product" src="https://p3-doubao-search-sign.byteimg.com/labis/20b35a7555983733c1ee638cd558da3a~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782305&amp;x-signature=ktKly52Djcoas4GpV9bkHp7f0eo%3D"
                         alt="Blue abstract background">
                     <div class="sd-post-card-gradient"></div>
                 </div>
@@ -334,7 +335,7 @@
                     </div>
                     <!-- 头部图片 -->
                     <div class="sd-post-card-header">
-                        <img src="https://p11-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1890973675594580007~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782532&amp;x-signature=njZlg5LHrXt7HU6em3ZrX9xWW%2Bs%3D"
+                        <img data-img="product" src="https://p11-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1890973675594580007~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782532&amp;x-signature=njZlg5LHrXt7HU6em3ZrX9xWW%2Bs%3D"
                             alt="Digital design header">
                         <div class="sd-post-card-header-gradient"></div>
                         <div class="sd-post-card-meta">
@@ -436,19 +437,6 @@
                 transform: scale(1.02);
             }
 
-            .sd-post-card::after {
-                content: '';
-                position: absolute;
-                inset: 0;
-                border-radius: 1rem;
-                background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            }
-
-            .sd-post-card:hover::after {
-                opacity: 1;
-            }
 
             .sd-post-card-decoration {
                 position: absolute;
@@ -787,6 +775,13 @@
                 }
             });
 
+            card.on('field-click', (e) => {
+                console.log(`Card [${e.detail.cardId}] field clicked:`, e.detail.fieldKey);
+            });
+
+            card.on('card-click', (e) => {
+                console.log(`Card [${e.detail.cardId}]`);
+            });
             card.on('error', (e) => {
                 console.error(`Card [${e.detail.cardId}] error:`, e.detail.message);
             });
@@ -813,10 +808,10 @@
                 targetWidth: 200,
                 html: `
                     <div class="dynamic-card">
-                        <h4 data-field="title" contenteditable="true">Dynamic Card</h4>
-                        <p data-field="content" contenteditable="true">This is a dynamically created card</p>
+                        <h4 data-field="title" data-editable="open">Dynamic Card</h4>
+                        <p data-field="content" data-editable="open">This is a dynamically created card</p>
                         <div class="meta">
-                            <span data-field="date" contenteditable="true">${new Date().toLocaleDateString()}</span>
+                            <span data-field="date" data-editable="open">${new Date().toLocaleDateString()}</span>
                         </div>
                     </div>
                 `,
@@ -883,7 +878,7 @@
                 if (contentUpdates[key] === '') delete contentUpdates[key];
             });
 
-            selectedCard.setContent(contentUpdates);
+            selectedCard.setContent(contentUpdates).resize();
         });
 
         document.getElementById('update-style').addEventListener('click', () => {

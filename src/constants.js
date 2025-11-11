@@ -4,9 +4,18 @@
 export const DEFAULT_OPTIONS = {
     targetWidth: 160,
     container: document.body,
+    editable: false,
     html: '',
     css: '',
-    data: {}
+    data: {},
+    styles: {
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        hoverBorderColor: '#3b82f6',
+        loadingBg: '#ffffff',
+        loadingText: 'Processing...',
+        loadingSpinnerColor: '#3b82f6'
+    }
 };
 
 /**
@@ -14,6 +23,8 @@ export const DEFAULT_OPTIONS = {
  */
 export const EVENT_TYPES = {
     CONTENT_CHANGE: 'content-change',
+    CARD_CLICK: 'card-click',
+    FIELD_CLICK: 'field-click',
     IMG_CLICK: 'img-click',
     ERROR: 'error'
 };

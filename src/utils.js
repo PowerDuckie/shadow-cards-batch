@@ -1,11 +1,44 @@
 import { ERROR_MESSAGES } from './constants.js';
 import { v4 as uuidv4 } from 'uuid';
+import DOMPurify from 'dompurify';
+
+/**
+ * Sanitize HTML with allowed tags and attributes
+ * @param {string} html
+ * @param {string[]} allowedTags
+ * @param {string[]} allowedAttrs
+ */
+export const sanitizeHtml = (html = '', allowedTags = [], allowedAttrs = []) => {
+    if (!html || typeof html !== 'string') return '';
+    try {
+        return DOMPurify.sanitize(html, {
+            ALLOWED_TAGS: allowedTags,
+            ALLOWED_ATTR: allowedAttrs
+        });
+    } catch (err) {
+        return escapeHtml(html);
+    }
+}
+
+/**
+ * Escape plain text to HTML
+ * @param {string} str
+ */
+export const escapeHtml = (str = '') => {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 
 /**
  * Generates a unique ID for card identification
  * @returns {string} Unique alphanumeric ID
  */
-export function generateUniqueId() {
+export const generateUniqueId = () => {
     return `shadow-card-${uuidv4()}`;
 }
 
@@ -13,66 +46,31 @@ export function generateUniqueId() {
  * Input validation utility for ensuring type safety and valid values
  */
 export const Validator = {
-    /**
-     * Validates that a container is a valid HTML element
-     * @param {*} container - Value to validate
-     * @throws {Error} Throws error if validation fails
-     */
     validateContainer(container) {
         if (!(container instanceof HTMLElement)) {
             throw new Error(ERROR_MESSAGES.INVALID_CONTAINER);
         }
     },
-
-    /**
-     * Validates that HTML content is a string
-     * @param {*} html - Value to validate
-     * @throws {Error} Throws error if validation fails
-     */
     validateHtml(html) {
         if (typeof html !== 'string') {
             throw new Error(ERROR_MESSAGES.INVALID_HTML);
         }
     },
-
-    /**
-     * Validates that CSS content is a string
-     * @param {*} css - Value to validate
-     * @throws {Error} Throws error if validation fails
-     */
     validateCss(css) {
         if (typeof css !== 'string') {
             throw new Error(ERROR_MESSAGES.INVALID_CSS);
         }
     },
-
-    /**
-     * Validates that data is a valid object
-     * @param {*} data - Value to validate
-     * @throws {Error} Throws error if validation fails
-     */
     validateData(data) {
         if (data !== null && typeof data !== 'object') {
             throw new Error(ERROR_MESSAGES.INVALID_DATA);
         }
     },
-
-    /**
-     * Validates that target width is a positive number
-     * @param {*} width - Value to validate
-     * @throws {Error} Throws error if validation fails
-     */
     validateTargetWidth(width) {
         if (typeof width !== 'number' || width <= 0 || isNaN(width)) {
             throw new Error(ERROR_MESSAGES.INVALID_TARGET_WIDTH);
         }
     },
-
-    /**
-     * Validates that a card instance hasn't been destroyed
-     * @param {Object} instance - Card instance to check
-     * @throws {Error} Throws error if instance is destroyed
-     */
     validateNotDestroyed(instance) {
         if (instance.isDestroyed) {
             throw new Error(ERROR_MESSAGES.ELEMENT_DESTROYED);

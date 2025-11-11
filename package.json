@@ -39,11 +39,12 @@
     "homepage": "https://github.com/PowerDuckie/shadow-cards-batch#readme",
     "devDependencies": {
         "@rollup/plugin-commonjs": "^28.0.5",
-        "@rollup/plugin-terser": "^0.4.4",
         "@rollup/plugin-node-resolve": "^16.0.3",
+        "@rollup/plugin-terser": "^0.4.4",
         "rollup": "^4.44.1"
     },
     "dependencies": {
+        "dompurify": "^3.3.0",
         "uuid": "^13.0.0"
     }
 }

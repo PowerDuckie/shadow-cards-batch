@@ -2,132 +2,83 @@ import { generateUniqueId, Validator } from './utils.js';
 import { DEFAULT_OPTIONS, EVENT_TYPES } from './constants.js';
 
 /**
- * ShadowCard class - Creates isolated card instances using Shadow DOM
+ * ShadowCard - Creates isolated card instances using Shadow DOM
+ * Supports batch creation, dynamic updates to HTML, CSS, and content
  */
 export class ShadowCard {
     constructor(options = {}) {
         try {
-            // Merge defaults and ensure object shape
-            this.options = { ...(DEFAULT_OPTIONS || {}), ...(options || {}) };
-            // ensure container fallback
-            this.options.container = this.options.container || document.body;
-            // basic init
-            this.id = generateUniqueId ? generateUniqueId() : `shadow-card-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            this.options = { ...DEFAULT_OPTIONS, ...options };
+
+            Validator.validateContainer(this.options.container);
+            Validator.validateHtml(this.options.html);
+            Validator.validateCss(this.options.css);
+            Validator.validateData(this.options.data);
+            Validator.validateTargetWidth(this.options.targetWidth);
+
+            this.id = generateUniqueId();
             this.isDestroyed = false;
             this.data = { ...this.options.data };
             this.eventListeners = new Map();
             this.resizeTimer = null;
 
-            // Validate using Validator if available (defensive)
-            try {
-                if (Validator && typeof Validator.validateContainer === 'function') {
-                    Validator.validateContainer(this.options.container);
-                }
-                if (Validator && typeof Validator.validateHtml === 'function') {
-                    Validator.validateHtml(this.options.html);
-                }
-                if (Validator && typeof Validator.validateCss === 'function') {
-                    Validator.validateCss(this.options.css);
-                }
-                if (Validator && typeof Validator.validateData === 'function') {
-                    Validator.validateData(this.options.data);
-                }
-                if (Validator && typeof Validator.validateTargetWidth === 'function') {
-                    Validator.validateTargetWidth(this.options.targetWidth);
-                }
-            } catch (validationErr) {
-                // Emit and rethrow - keep stack for developer
-                this.dispatchError(validationErr?.message || String(validationErr));
-                throw validationErr;
-            }
-
-            // Build DOM
+            // Create DOM and Shadow DOM
             this.element = this.createHostElement();
             this.shadow = this.element.shadowRoot;
-            this.innerContainer = this.shadow && this.shadow.getElementById('inner-container');
+            this.innerContainer = this.shadow.getElementById('inner-container');
 
-            // Initialize content and styles (use safe calls)
-            this.setHTML(this.options.html || '');
-            if (this.options.css) this.setStyle(this.options.css);
-            if (this.options.data) this.setContent(this.options.data);
+            // Set initial content and styles
+            this.setHTML(this.options.html);
+            this.setStyle(this.options.css);
+            this.setContent(this.options.data);
 
-            // Append to container
             this.options.container.appendChild(this.element);
 
-            // Defer resize to next tick
-            this.resizeTimer = setTimeout(() => {
-                // ignore errors here; resize handles its own errors and dispatches them
-                this.resize().catch(() => { });
-            }, 0);
-
+            // Initial resize after DOM render
+            this.resizeTimer = setTimeout(() => this.resize(), 0);
         } catch (error) {
-            // if constructor fails, attempt to dispatch error (guarded)
-            try { this.dispatchError(error?.message || String(error)); } catch (_) { }
+            this.dispatchError(error.message);
             throw error;
         }
     }
 
     /**
-     * Wait for all images in the card to load, optional timeout in ms.
-     * @param {Object} [opts] - { timeoutMs: number }
-     * @returns {Promise}
+     * Wait for all images to load in the card
+     * @returns {Promise<void>}
      */
-    waitForImages(opts = {}) {
-        const timeoutMs = (opts && Number(opts.timeoutMs)) || 0;
+    waitForImages() {
         return new Promise((resolve) => {
-            try {
-                const imgs = this.shadow ? Array.from(this.shadow.querySelectorAll('img')) : [];
-                if (!imgs.length) {
-                    resolve();
-                    return;
-                }
-                let processed = 0;
-                const total = imgs.length;
-                const done = () => {
-                    processed++;
-                    if (processed >= total) resolve();
-                };
+            const images = Array.from(this.shadow?.querySelectorAll('img') || []);
+            if (!images.length) return resolve();
 
-                imgs.forEach(img => {
-                    // already processed
-                    if (img.complete) {
-                        done();
-                        return;
-                    }
-                    // add listeners once
-                    const onDone = () => {
-                        img.removeEventListener('load', onDone);
-                        img.removeEventListener('error', onDone);
-                        done();
-                    };
-                    img.addEventListener('load', onDone, { once: true });
-                    img.addEventListener('error', onDone, { once: true });
-                });
+            let loadedCount = 0;
+            const checkComplete = () => {
+                loadedCount++;
+                if (loadedCount === images.length) resolve();
+            };
 
-                if (timeoutMs > 0) {
-                    setTimeout(() => {
-                        // timeout: resolve even if not all images loaded
-                        resolve();
-                    }, timeoutMs);
-                }
-            } catch (err) {
-                // on unexpected errors, resolve to avoid blocking
-                resolve();
-            }
+            images.forEach(img => {
+                if (img.complete) return checkComplete();
+                img.addEventListener('load', checkComplete, { once: true });
+                img.addEventListener('error', () => {
+                    console.warn('Image failed to load:', img.src);
+                    checkComplete();
+                }, { once: true });
+            });
         });
     }
 
+    /**
+     * Create host element with Shadow DOM
+     */
     createHostElement() {
         const element = document.createElement('shadow-card');
         element.id = this.id;
         element.dataset.id = this.id;
 
-        // Apply style variables based on options
         this.applyStyleVariables(element);
 
         const shadow = element.attachShadow({ mode: 'open' });
-
-        // NOTE: use /* */ style comments, avoid '//' inside CSS
         shadow.innerHTML = `
         <style>
         :host {
@@ -141,22 +92,28 @@ export class ShadowCard {
             transition: border 0.3s ease;
             user-select: none;
             position: relative;
-            margin: ${this.options?.styles?.margin || '8px auto'};
-            width: ${this.options?.targetWidth ? `${Number(this.options.targetWidth)}px` : 'auto'};
+            margin: ${this.options?.styles?.marginHeight || "8px"} ${this.options?.styles?.marginWidth || "auto"};
         }
-        
         :host(:hover) {
             border-color: var(--shadow-card-hover-border-color, #3b82f6);
         }
-        
+
         #inner-container {
-            /* width: 100%; */
-            width:640px;
+            width: 640px;
             transform-origin: top left;
             transform: scale(1);
             display: flex;
             align-items: center;
             justify-content: center;
+            pointer-events: ${!this.options?.editable ? 'auto' : 'none'};
+        }
+
+        #inner-container [data-editable="open"] {
+            pointer-events: ${!this.options?.editable ? 'none' : 'auto'};
+        }
+
+        #inner-container [data-img] {
+            pointer-events: ${!this.options?.editable ? 'none' : 'auto'};
         }
 
         #loading-overlay {
@@ -172,286 +129,49 @@ export class ShadowCard {
             z-index: 10;
             opacity: 1;
             transition: opacity 0.3s ease;
+            pointer-events: none;
         }
-        
         .loading-spinner {
             width: var(--shadow-card-loading-icon-size, 20px);
             height: var(--shadow-card-loading-icon-size, 20px);
-            border: 2px solid var(--shadow-card-loading-spinner-border, rgba(0, 0, 0, 0.1));
+            border: 2px solid var(--shadow-card-loading-spinner-border, rgba(0,0,0,0.1));
             border-top-color: var(--shadow-card-loading-spinner-color, #3b82f6);
             border-radius: 50%;
             animation: spin var(--shadow-card-loading-spinner-speed, 1s) linear infinite;
         }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        #loading-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-overlay.hidden { opacity: 0; }
         </style>
         <div id="loading-overlay">
-            <div class="loading-spinner" aria-hidden="true"></div>
+            <div class="loading-spinner"></div>
             <span class="loading-text">${this.options?.styles?.loadingText || 'Loading...'}</span>
         </div>
-        <div id="inner-container" role="region" aria-label="shadow-card-content"></div>
-    `;
+        <div id="inner-container"></div>
+        `;
 
-        // bind handlers so they can be removed later
+        // Event delegation
         this.boundInputHandler = (e) => this.handleInput(e);
-        this.boundClickHandler = (e) => this.handleClick(e);
-        this.boundPasteHandler = (e) => this.handlePaste(e);
-
-        // events attached to shadow root so they are scoped
+        this.boundClickHandler = (e) => this.handleClickDelegated(e);
         shadow.addEventListener('input', this.boundInputHandler);
         shadow.addEventListener('click', this.boundClickHandler);
-        shadow.addEventListener('paste', this.boundPasteHandler);
 
         return element;
     }
 
     /**
-     * Improved paste handler:
-     * - preventDefault early
-     * - sanitize HTML
-     * - try document.execCommand('insertHTML') for undo support
-     * - fallback to Range.insertNode if needed
+     * Apply CSS variables from options
      */
-    handlePaste(e) {
-        if (this.isDestroyed) return;
-        if (!e) return;
+    applyStyleVariables(element) {
+        if (!element) return;
+        const styleMappings = this.getStyleMappings();
+        if (!this.options.styles) return;
 
-        // de-dupe
-        if (e.__shadowCardHandled) return;
-        try {
-            Object.defineProperty(e, '__shadowCardHandled', { value: true, configurable: true });
-        } catch (err) {
-            e.__shadowCardHandled = true;
-        }
-
-        // try to prevent native paste behavior
-        try {
-            if (typeof e.preventDefault === 'function') e.preventDefault();
-            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-            if (typeof e.stopPropagation === 'function') e.stopPropagation();
-        } catch (_) { }
-
-        let editableEl = e.target;
-        while (editableEl && editableEl.nodeType === Node.ELEMENT_NODE && !editableEl.isContentEditable) {
-            editableEl = editableEl.parentElement;
-        }
-        if (!editableEl || !editableEl.isContentEditable) {
-            return;
-        }
-
-        // Get clipboard data (defensive)
-        const clipboard = (e.clipboardData || window.clipboardData);
-        if (!clipboard) {
-            // nothing we can do
-            return;
-        }
-
-        const rawHtml = clipboard.getData('text/html') || '';
-        const plainText = clipboard.getData('text') || '';
-
-        // choose html if present, otherwise plain text
-        const htmlToSanitize = rawHtml.trim() !== '' ? rawHtml : (plainText ? this.escapeHtml(plainText).replace(/\n/g, '<br/>') : '');
-
-        if (!htmlToSanitize) return;
-
-        // sanitize
-        const sanitized = (typeof this.sanitizeHtmlContent === 'function') ? this.sanitizeHtmlContent(htmlToSanitize) : htmlToSanitize;
-
-        // Obtain selection in a shadow-aware way
-        let selection = null;
-        try {
-            const rootNode = editableEl.getRootNode && editableEl.getRootNode();
-            if (rootNode && typeof rootNode.getSelection === 'function') {
-                selection = rootNode.getSelection();
-            }
-            if (!selection) selection = window.getSelection();
-        } catch (_) {
-            selection = window.getSelection();
-        }
-
-        // ensure focus so execCommand works with correct target
-        try { editableEl.focus(); } catch (_) { }
-
-        // Attempt to use execCommand('insertHTML') for undo integration (best effort)
-        if (typeof document.execCommand === 'function') {
-            try {
-                // set selection range if possible
-                if (selection && selection.rangeCount > 0) {
-                    // If range not inside editableEl, collapse to end of editableEl
-                    let range = selection.getRangeAt(0);
-                    if (!editableEl.contains(range.startContainer)) {
-                        range = document.createRange();
-                        range.selectNodeContents(editableEl);
-                        range.collapse(false);
-                        try { selection.removeAllRanges(); selection.addRange(range); } catch (_) { }
-                    }
-                } else if (selection) {
-                    try {
-                        const range = document.createRange();
-                        range.selectNodeContents(editableEl);
-                        range.collapse(false);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    } catch (_) { }
-                }
-
-                // execCommand will insert the HTML at current selection and create undo snapshot
-                const ok = document.execCommand('insertHTML', false, sanitized);
-                if (ok) {
-                    return;
-                }
-                // fallthrough to manual insertion if execCommand returned falsy
-            } catch (execErr) {
-                // ignore and fallback to manual insertion
-            }
-        }
-
-        // Fallback: manual insertion using Range (try to preserve selection)
-        try {
-            let range = (selection && selection.rangeCount > 0) ? selection.getRangeAt(0).cloneRange() : null;
-            if (!range || !editableEl.contains(range.startContainer)) {
-                range = document.createRange();
-                range.selectNodeContents(editableEl);
-                range.collapse(false);
-            } else {
-                // remove currently selected contents so paste replaces them
-                range.deleteContents();
-            }
-
-            // Create fragment from sanitized HTML
-            const temp = document.createElement('div');
-            temp.innerHTML = sanitized;
-            const frag = document.createDocumentFragment();
-            let lastNode = null;
-            while (temp.firstChild) {
-                lastNode = frag.appendChild(temp.firstChild);
-            }
-
-            range.insertNode(frag);
-
-            // restore selection after inserted content
-            if (lastNode) {
-                try {
-                    const newRange = document.createRange();
-                    newRange.setStartAfter(lastNode);
-                    newRange.collapse(true);
-                    if (selection) {
-                        selection.removeAllRanges();
-                        selection.addRange(newRange);
-                    }
-                } catch (_) { /* ignore */ }
-            }
-        } catch (err) {
-            // Final fallback: append plain text node
-            try {
-                const fallbackText = plainText || '';
-                const tn = document.createTextNode(fallbackText);
-                editableEl.appendChild(tn);
-            } catch (innerErr) {
-                console.error('Paste fallback failed:', innerErr);
-            }
-        }
-    }
-
-    /**
-     * Escape plain text -> safe html (used when only plain text available)
-     */
-    escapeHtml(str = '') {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    /**
-     * Sanitizes HTML to allow only basic formatting tags & allowed attributes.
-     * More defensive: removes style/class/on* handlers and strips unknown tags.
-     */
-    sanitizeHtmlContent(html = '') {
-        if (!html || typeof html !== 'string') return '';
-
-        const ALLOWED_TAGS = new Set(['b', 'i', 'strong', 'em', 'u', 's', 'sub', 'sup', 'span', 'br', 'p', 'div']);
-        const ALLOWED_ATTRS = new Set(['data-field', 'data-img']); // permit only these data attrs
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-        const container = doc.body.firstChild;
-        if (!container) return '';
-
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
-        const toRemove = [];
-
-        // collect nodes to examine (can't mutate while walking directly)
-        const nodes = [];
-        let node = walker.nextNode();
-        while (node) {
-            nodes.push(node);
-            node = walker.nextNode();
-        }
-
-        nodes.forEach(n => {
-            if (n.nodeType === Node.COMMENT_NODE) {
-                toRemove.push(n);
-                return;
-            }
-            if (n.nodeType === Node.ELEMENT_NODE) {
-                const tag = n.tagName.toLowerCase();
-                if (!ALLOWED_TAGS.has(tag)) {
-                    // replace node by its children (preserve text)
-                    const parent = n.parentNode;
-                    while (n.firstChild) parent.insertBefore(n.firstChild, n);
-                    toRemove.push(n);
-                    return;
-                }
-                // sanitize attributes: remove any attr not explicitly allowed
-                for (let i = n.attributes.length - 1; i >= 0; i--) {
-                    const attr = n.attributes[i];
-                    const name = attr.name.toLowerCase();
-                    // remove event handlers, style, class, id, etc
-                    if (!ALLOWED_ATTRS.has(name)) {
-                        n.removeAttribute(attr.name);
-                    } else {
-                        // allowed data- attributes: ensure value simple
-                        const v = String(attr.value || '');
-                        // disallow javascript: urls etc in case someone put them on data attr (unlikely but defensive)
-                        if (/^\s*javascript:/i.test(v)) {
-                            n.removeAttribute(attr.name);
-                        }
-                    }
-                }
+        Object.entries(styleMappings).forEach(([key, cssVar]) => {
+            if (this.options.styles[key] !== undefined) {
+                try { element.style.setProperty(cssVar, this.options.styles[key]); }
+                catch (err) { console.error(`Failed to set ${cssVar}:`, err); }
             }
         });
-
-        toRemove.forEach(r => r.parentNode && r.parentNode.removeChild(r));
-        // return innerHTML of sanitized container
-        return container.innerHTML;
-    }
-
-    applyStyleVariables(element) {
-        if (!element || !(element instanceof HTMLElement)) return;
-        try {
-            const styleMappings = this.getStyleMappings();
-            if (this.options?.styles && typeof this.options.styles === 'object') {
-                Object.entries(styleMappings).forEach(([optionKey, cssVar]) => {
-                    if (this.options.styles[optionKey] !== undefined) {
-                        try {
-                            element.style.setProperty(cssVar, this.options.styles[optionKey]);
-                        } catch (_) { }
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('applyStyleVariables error', err);
-        }
     }
 
     getStyleMappings() {
@@ -472,220 +192,172 @@ export class ShadowCard {
         };
     }
 
-    setCssVariables(variables) {
+    /**
+     * Dynamically update CSS variables
+     */
+    setCssVariables(vars) {
         try {
-            if (this.isDestroyed) return this;
-            if (!variables || typeof variables !== 'object') throw new Error('Style variables must be an object');
+            Validator.validateNotDestroyed(this);
+            if (!vars || typeof vars !== 'object') throw new Error('Style variables must be an object');
             const styleMappings = this.getStyleMappings();
-            Object.entries(variables).forEach(([optionKey, value]) => {
-                const cssVar = styleMappings[optionKey];
-                if (cssVar && value !== undefined) {
-                    try { this.element.style.setProperty(cssVar, value); } catch (_) { }
-                }
+            Object.entries(vars).forEach(([key, val]) => {
+                const cssVar = styleMappings[key];
+                if (cssVar && val !== undefined) this.element.style.setProperty(cssVar, val);
             });
-            if (variables.loadingText && this.shadow) {
-                const loadingTextEl = this.shadow.querySelector('.loading-text');
-                if (loadingTextEl) loadingTextEl.textContent = variables.loadingText;
+            if (vars.loadingText) {
+                const el = this.shadow.querySelector('.loading-text');
+                if (el) el.textContent = vars.loadingText;
             }
             return this;
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-            return this;
-        }
+        } catch (err) { this.dispatchError(err.message); return this; }
     }
 
+    /**
+     * Handle editable content input
+     */
     handleInput(e) {
         if (this.isDestroyed) return;
+        const target = e.target;
+        if (!target?.hasAttribute('data-field')) return;
+
         try {
-            const target = e.target;
-            if (!target) return;
-            if (target.isContentEditable && target.hasAttribute('data-field')) {
-                const field = target.getAttribute('data-field');
-                const value = target.innerText;
-                this.data = this.data || {};
-                this.data[field] = value;
-                this.dispatchEvent(EVENT_TYPES.CONTENT_CHANGE, { field, value });
-            }
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-        }
+            const field = target.getAttribute('data-field');
+            const value = target.innerText;
+            this.data[field] = value;
+            this.dispatchEvent(EVENT_TYPES.CONTENT_CHANGE, { field, value });
+        } catch (err) { this.dispatchError(err.message); }
     }
 
-    handleClick(e) {
+    /**
+     * Delegated click handler - supports clicks on obscured images
+     */
+    handleClickDelegated(event) {
         if (this.isDestroyed) return;
-        try {
-            const target = e.target;
-            if (!target) return;
+        const shadow = this.shadow;
+        if (!shadow) return;
+
+        const x = event.clientX;
+        const y = event.clientY;
+        let target = shadow.elementFromPoint(x, y);
+        let eventDispatched = false;
+
+        while (target && target !== shadow && !eventDispatched) {
             if (target.tagName === 'IMG' && target.hasAttribute('data-img')) {
                 this.dispatchEvent(EVENT_TYPES.IMG_CLICK, {
                     imgKey: target.getAttribute('data-img'),
                     element: target
                 });
-            }
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-        }
-    }
-
-    dispatchEvent(type, detail = {}) {
-        if (this.isDestroyed || !this.element) return;
-        try {
-            const evt = new CustomEvent(type, {
-                detail: { ...detail, cardId: this.id },
-                bubbles: true,
-                cancelable: true
-            });
-            this.element.dispatchEvent(evt);
-            // also call any listeners added via on()
-            const handlers = this.eventListeners.get(type);
-            if (handlers && handlers.size) {
-                handlers.forEach(h => {
-                    try { h(evt); } catch (_) { }
+                eventDispatched = true;
+            } else if (target.hasAttribute('data-field')) {
+                this.dispatchEvent(EVENT_TYPES.FIELD_CLICK, {
+                    fieldKey: target.getAttribute('data-field'),
+                    element: target
                 });
+                eventDispatched = true;
+            } else if (!eventDispatched) {
+                this.dispatchEvent(EVENT_TYPES.CARD_CLICK, { element: target });
+                eventDispatched = true;
             }
-        } catch (err) {
-            // swallow errors from event dispatch but log
-            console.error('dispatchEvent error', err);
+            target = target.parentNode;
         }
     }
 
-    dispatchError(message) {
-        try {
-            this.dispatchEvent(EVENT_TYPES.ERROR, { message });
-        } catch (_) { }
+    dispatchEvent(type, detail) {
+        if (this.isDestroyed) return;
+        this.element.dispatchEvent(new CustomEvent(type, { detail: { ...detail, cardId: this.id }, bubbles: true, cancelable: true }));
     }
 
-    async setHTML(html = '') {
+    dispatchError(message) { this.dispatchEvent(EVENT_TYPES.ERROR, { message }); }
+
+    async setHTML(html) {
         try {
-            if (this.isDestroyed) return this;
-            if (Validator && typeof Validator.validateHtml === 'function') Validator.validateHtml(html);
-            if (this.innerContainer) {
-                this.innerContainer.innerHTML = html || '';
-                // force reflow
-                void this.innerContainer.offsetHeight;
-                await this.resize();
-            }
+            Validator.validateNotDestroyed(this);
+            Validator.validateHtml(html);
+            if (!this.innerContainer) throw new Error('Inner container not found');
+
+            this.innerContainer.innerHTML = html;
+            this.innerContainer.offsetHeight;
+            await this.resize();
             return this;
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-            return this;
-        }
+        } catch (err) { this.dispatchError(err.message); return this; }
     }
 
-    setStyle(css = '', reset = false) {
+    setStyle(css, reset = false) {
         try {
-            if (this.isDestroyed) return this;
-            if (Validator && typeof Validator.validateCss === 'function') Validator.validateCss(css);
-            if (!this.shadow) return this;
+            Validator.validateNotDestroyed(this);
+            Validator.validateCss(css);
             let styleEl = this.shadow.querySelector('#custom-style');
             if (!styleEl) {
                 styleEl = document.createElement('style');
                 styleEl.id = 'custom-style';
-                // insert before inner container
-                const ref = this.shadow.getElementById('inner-container');
-                this.shadow.insertBefore(styleEl, ref);
+                this.shadow.insertBefore(styleEl, this.innerContainer);
             }
-            styleEl.textContent = reset ? (css || '') : `${styleEl.textContent || ''}\n${css || ''}`;
+            styleEl.textContent = reset ? css : `${styleEl.textContent}\n${css}`;
             return this;
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-            return this;
-        }
+        } catch (err) { this.dispatchError(err.message); return this; }
     }
 
-    setContent(data = {}) {
+    setContent(data) {
         try {
-            if (this.isDestroyed) return this;
-            if (Validator && typeof Validator.validateData === 'function') Validator.validateData(data);
-            this.data = { ...(this.data || {}), ...(data || {}) };
-            if (!this.shadow) return this;
-            Object.entries(data || {}).forEach(([field, value]) => {
+            Validator.validateNotDestroyed(this);
+            Validator.validateData(data);
+            this.data = { ...this.data, ...data };
+            Object.entries(data).forEach(([field, val]) => {
                 const el = this.shadow.querySelector(`[data-field="${field}"]`);
-                if (el && el.isContentEditable) {
-                    el.innerText = value == null ? '' : String(value);
-                }
+                if (el) el.innerText = val == null ? '' : String(val);
             });
             return this;
-        } catch (err) {
-            this.dispatchError(err?.message || String(err));
-            return this;
-        }
+        } catch (err) { this.dispatchError(err.message); return this; }
     }
 
     async resize(targetWidth) {
         try {
-            if (this.isDestroyed) return this;
-            if (Validator && typeof Validator.validateNotDestroyed === 'function') Validator.validateNotDestroyed(this);
+            Validator.validateNotDestroyed(this);
+            const overlay = this.shadow?.querySelector('#loading-overlay');
+            overlay?.classList.remove('hidden');
 
-            const loadingOverlay = this.shadow && this.shadow.querySelector('#loading-overlay');
-            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-
-            if (targetWidth !== undefined && Validator && typeof Validator.validateTargetWidth === 'function') {
+            if (targetWidth !== undefined) {
                 Validator.validateTargetWidth(targetWidth);
-                this.options.targetWidth = Number(targetWidth);
-            }
-            const targetW = Number(this.options.targetWidth) || 160;
-
-            if (!this.element || !this.innerContainer) {
-                if (loadingOverlay) loadingOverlay.classList.add('hidden');
-                return this;
+                this.options.targetWidth = targetWidth;
             }
 
-            // set host width to target width for measurement
-            this.element.style.width = `${targetW}px`;
+            this.element.style.width = `${this.options.targetWidth}px`;
             this.element.style.height = 'auto';
 
-            // wait for images with a sensible timeout
-            await this.waitForImages({ timeoutMs: 5000 });
+            await this.waitForImages();
 
-            // measure original size (temporarily reset transform)
-            const prevTransform = this.innerContainer.style.transform || '';
-            this.innerContainer.style.transform = 'scale(1)';
-            this.innerContainer.style.transformOrigin = 'top left';
-            // trigger reflow & measure
-            void this.innerContainer.offsetHeight;
-            const rect = this.innerContainer.getBoundingClientRect();
-            const originalContentWidth = Math.max(1, rect.width || 1);
-            const originalContentHeight = Math.max(1, rect.height || 1);
+            let originalWidth = this.innerContainer?.offsetWidth || 1;
+            const scale = Math.min(1, this.options.targetWidth / originalWidth);
 
-            const scale = Math.min(1, targetW / originalContentWidth);
+            if (this.innerContainer) {
+                this.innerContainer.style.transform = `scale(${scale})`;
+                this.innerContainer.style.transformOrigin = 'top left';
+                const scaledHeight = Math.max(1, (this.innerContainer.offsetHeight || 1) * scale);
+                this.element.style.height = `${scaledHeight}px`;
+                this.innerContainer.style.width = `${this.options.targetWidth / scale}px`;
+                this.innerContainer.style.overflow = 'hidden';
+            }
 
-            // set width for inner container (reverse-engineered) before scaling to preserve layout
-            const innerWidth = Math.round(targetW / Math.max(scale, 0.0001));
-            this.innerContainer.style.width = `${innerWidth}px`;
-            this.innerContainer.style.overflow = 'hidden';
-
-            // apply scale
-            this.innerContainer.style.transform = `scale(${scale})`;
-            this.innerContainer.style.transformOrigin = 'top left';
-
-            const scaledHeight = Math.max(1, Math.round(originalContentHeight * scale));
-            this.element.style.height = `${scaledHeight}px`;
-
-            // hide loading after paint
-            requestAnimationFrame(() => {
-                loadingOverlay?.classList.add('hidden');
-            });
-
+            requestAnimationFrame(() => overlay?.classList.add('hidden'));
             return this;
         } catch (err) {
-            try { this.shadow?.querySelector('#loading-overlay')?.classList.add('hidden'); } catch (_) { }
-            this.dispatchError(err?.message || String(err));
+            this.dispatchError(err.message);
+            this.shadow?.querySelector('#loading-overlay')?.classList.add('hidden');
             return this;
         }
     }
 
     on(type, handler) {
-        if (this.isDestroyed) return this;
-        if (typeof handler !== 'function') {
-            this.dispatchError('Event handler must be a function');
+        if (this.isDestroyed || typeof handler !== 'function') {
+            if (typeof handler !== 'function') this.dispatchError('Event handler must be a function');
             return this;
         }
         if (!this.eventListeners.has(type)) this.eventListeners.set(type, new Set());
-        const set = this.eventListeners.get(type);
-        set.add(handler);
-        // add DOM listener so event can be captured normally
-        try { this.element.addEventListener(type, handler); } catch (_) { }
+        const handlers = this.eventListeners.get(type);
+        if (!handlers.has(handler)) {
+            handlers.add(handler);
+            this.element.addEventListener(type, handler);
+        }
         return this;
     }
 
@@ -693,17 +365,14 @@ export class ShadowCard {
         if (this.isDestroyed) return this;
         const handlers = this.eventListeners.get(type);
         if (!handlers) return this;
+
         if (handler) {
             handlers.delete(handler);
-            try { this.element.removeEventListener(type, handler); } catch (_) { }
+            this.element.removeEventListener(type, handler);
         } else {
-            handlers.forEach(h => {
-                try { this.element.removeEventListener(type, h); } catch (_) { }
-            });
+            handlers.forEach(h => this.element.removeEventListener(type, h));
             handlers.clear();
         }
-        // if empty, remove the key
-        if (handlers.size === 0) this.eventListeners.delete(type);
         return this;
     }
 
@@ -711,39 +380,23 @@ export class ShadowCard {
         if (this.isDestroyed) return;
         clearTimeout(this.resizeTimer);
 
-        // remove custom event listeners
+        this.shadow?.removeEventListener('input', this.boundInputHandler);
+        this.shadow?.removeEventListener('click', this.boundClickHandler);
+
         this.eventListeners.forEach((handlers, type) => {
-            handlers.forEach(handler => {
-                try { this.element.removeEventListener(type, handler); } catch (_) { }
-            });
+            handlers.forEach(h => this.element.removeEventListener(type, h));
         });
         this.eventListeners.clear();
 
-        // remove shadow-scoped listeners
-        try {
-            this.shadow?.removeEventListener('input', this.boundInputHandler);
-            this.shadow?.removeEventListener('click', this.boundClickHandler);
-            this.shadow?.removeEventListener('paste', this.boundPasteHandler);
-        } catch (_) { }
-
-        // remove DOM element
-        try { this.element?.parentNode?.removeChild(this.element); } catch (_) { }
-
-        // nullify references
+        this.element?.remove();
         this.isDestroyed = true;
-        this.element = null;
-        this.shadow = null;
-        this.innerContainer = null;
-        this.data = null;
-        this.options = null;
-        this.boundInputHandler = null;
-        this.boundClickHandler = null;
-        this.boundPasteHandler = null;
+
+        this.element = this.shadow = this.innerContainer = this.data = this.options = null;
     }
 
     static batchCreate(cards) {
-        if (!Array.isArray(cards)) throw new Error('batchCreate requires an array of card configurations');
-        return cards.map(options => new ShadowCard(options));
+        if (!Array.isArray(cards)) throw new Error('batchCreate requires an array');
+        return cards.map(opts => new ShadowCard(opts));
     }
 }
 

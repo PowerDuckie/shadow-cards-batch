@@ -96,6 +96,7 @@ const cards = ShadowCard.batchCreate(cardConfigs);
 | `css`          | string       | `''`             | Scoped CSS styles for the card content        |
 | `data`         | object       | `{}`             | Initial data for `data-field` elements        |
 | `styles`       | object       | `{}`             | Style configuration for the card container    |
+| `editable`     | boolean      | `false`          | Enable/disable editing capabilities           |
 
 ### Style Configuration (`styles` option)
 
@@ -116,6 +117,8 @@ Customize the card's container appearance through these properties:
 | `loadingSpinnerColor`  | `--shadow-card-loading-spinner-color` | `#3b82f6`        |
 | `loadingSpinnerSpeed`  | `--shadow-card-loading-spinner-speed` | `1s`             |
 | `loadingText`          | `--shadow-card-loading-text`    | `Loading...`           |
+| `marginWidth`          | N/A                             | `auto`                 | Horizontal margin for card positioning       |
+| `marginHeight`         | N/A                             | `8px`                  | Vertical margin for card spacing             |
 
 ## API Reference
 
@@ -123,13 +126,14 @@ Customize the card's container appearance through these properties:
 
 | Method               | Parameters                                  | Return Value   | Description                                  |
 |----------------------|---------------------------------------------|----------------|----------------------------------------------|
-| `setHTML(html)`      | `html`: New HTML content string             | `ShadowCard`   | Update card's content structure              |
-| `setStyle(css, reset)` | `css`: Styles string, `reset`: Boolean (default: false) | `ShadowCard` | Add/replace scoped CSS styles |
-| `setContent(data)`   | `data`: `{ field: value }` object           | `ShadowCard`   | Update text in `data-field` elements         |
-| `setCssVariables(vars)` | `vars`: Style variables object            | `ShadowCard`   | Update container styles dynamically          |
-| `resize(width)`      | `width`: New target width                   | `ShadowCard`   | Rescale card to specified width              |
-| `on(type, handler)`  | `type`: Event type, `handler`: Callback     | `ShadowCard`   | Register event listener                      |
-| `off(type, handler)` | `type`: Event type, `handler`: Callback     | `ShadowCard`   | Remove event listener                        |
+| `setHTML(html)`      | `html`: New HTML content string             | `ShadowCard`   | Update card's content structure (chainable)  |
+| `setStyle(css, reset)` | `css`: Styles string, `reset`: Boolean (default: false) | `ShadowCard` | Add/replace scoped CSS styles (chainable) |
+| `setContent(data)`   | `data`: `{ field: value }` object           | `ShadowCard`   | Update text in `data-field` elements (chainable) |
+| `setCssVariables(vars)` | `vars`: Style variables object            | `ShadowCard`   | Update container styles dynamically (chainable) |
+| `resize(width)`      | `width`: New target width                   | `ShadowCard`   | Rescale card to specified width (chainable)  |
+| `waitForImages()`    | None                                        | `Promise<void>`| Wait for all images in card to load          |
+| `on(type, handler)`  | `type`: Event type, `handler`: Callback     | `ShadowCard`   | Register event listener (chainable)          |
+| `off(type, handler)` | `type`: Event type, `handler`: Callback     | `ShadowCard`   | Remove event listener (chainable)            |
 | `destroy()`          | None                                        | `void`         | Clean up and remove card from DOM            |
 
 ### Static Methods
@@ -144,6 +148,8 @@ Customize the card's container appearance through these properties:
 |------------------|---------------------------------------------|----------------------------------------------|
 | `content-change` | `cardId`, `field`, `value`, `element`       | Triggered when editable content changes       |
 | `img-click`      | `cardId`, `imgKey`, `element`               | Triggered when images with `data-img` are clicked |
+| `field-click`    | `cardId`, `fieldKey`, `element`             | Triggered when elements with `data-field` are clicked |
+| `card-click`     | `cardId`, `element`                         | Triggered when card background is clicked     |
 | `error`          | `cardId`, `message`                         | Triggered when an error occurs                |
 
 ## Theming
@@ -172,11 +178,25 @@ shadow-card {
 1. **Clean Up Resources**: Always call `destroy()` when cards are no longer needed to prevent memory leaks
 2. **Sanitize Inputs**: Validate and sanitize user-provided HTML/CSS before passing to card configurations
 3. **Debounce Resizes**: When responding to window resize events, debounce calls to `resize()`
-4. **Handle Errors**: Listen to the `error` event to gracefully handle issues like destroyed card operations
+4. **Handle Errors**: Listen to the `error` event to gracefully handle issues like operations on destroyed cards
 5. **Batch Updates**: For multiple changes, use method chaining to minimize reflows:
    ```javascript
    card.setHTML(newHtml).setStyle(newCss).resize(300);
    ```
+6. **Wait for Images**: Use `waitForImages()` when you need to ensure images are loaded before measurements:
+   ```javascript
+   await card.setHTML(htmlWithImages).waitForImages();
+   card.resize(400); // Now accurate after images loaded
+   ```
+
+## Error Handling
+
+The library includes comprehensive validation and error handling:
+
+- All methods validate that the card hasn't been destroyed before executing
+- Input validation for all configuration options
+- Meaningful error messages dispatched through the `error` event
+- Graceful degradation when invalid operations are attempted
 
 ## Browser Support
 
