@@ -13,6 +13,7 @@
         }
 
         .control-panel {
+            flex: 1;
             margin-bottom: 20px;
             padding: 1.5rem;
             border: 1px solid #eee;
@@ -94,10 +95,14 @@
         }
 
         .cards-container {
-            display: flex;
+            /* display: flex;
+            flex-direction: column; */
+            width: 240px;
             gap: 20px;
             flex-wrap: wrap;
             padding: 10px 0;
+            height: 100%;
+            overflow: auto;
         }
 
         .card-selector {
@@ -109,78 +114,80 @@
 </head>
 
 <body>
-    <div class="control-panel">
-        <div class="control-group">
-            <h3>Card Management</h3>
-            <div class="button-group">
-                <button id="add-card">Add New Card</button>
-                <button id="destroy-all" class="secondary">Destroy All Cards</button>
-            </div>
-        </div>
-        <div class="control-group">
-            <h3>Target Card Selection</h3>
-            <select id="card-selector" class="card-selector">
-                <option value="">-- Select a card --</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <h3>Content Control</h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="title-input">Title</label>
-                    <input type="text" id="title-input" placeholder="Update title">
-                </div>
-                <div class="form-group">
-                    <label for="summary-input">Summary</label>
-                    <input type="text" id="summary-input" placeholder="Update summary">
-                </div>
-                <div class="form-group">
-                    <label for="author-input">Author</label>
-                    <input type="text" id="author-input" placeholder="Update author">
-                </div>
-                <div class="form-group">
-                    <label for="date-input">Date</label>
-                    <input type="text" id="date-input" placeholder="Update date">
+    <div style="display: flex;height: 100vh;">
+        <div class="cards-container" id="cards-container"></div>
+        <div class="control-panel">
+            <div class="control-group">
+                <h3>Card Management</h3>
+                <div class="button-group">
+                    <button id="add-card">Add New Card</button>
+                    <button id="destroy-all" class="secondary">Destroy All Cards</button>
                 </div>
             </div>
-            <button id="update-content" class="secondary">Apply Content Changes</button>
-        </div>
-        <div class="control-group">
-            <h3>Style Control</h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="border-color">Border Color</label>
-                    <input type="color" id="border-color" value="#e2e8f0">
-                </div>
-                <div class="form-group">
-                    <label for="hover-color">Hover Border Color</label>
-                    <input type="color" id="hover-color" value="#3b82f6">
-                </div>
-                <div class="form-group">
-                    <label for="border-radius">Border Radius (px)</label>
-                    <input type="number" id="border-radius" value="8" min="0" max="20">
-                </div>
-                <div class="form-group">
-                    <label for="loading-bg">Loading Background</label>
-                    <input type="color" id="loading-bg" value="#ffffff">
-                </div>
-                <div class="form-group">
-                    <label for="spinner-color">Spinner Color</label>
-                    <input type="color" id="spinner-color" value="#3b82f6">
-                </div>
-                <div class="form-group">
-                    <label for="loading-text">Loading Text</label>
-                    <input type="text" id="loading-text" value="Processing...">
-                </div>
-                <div class="form-group">
-                    <label for="card-width">Card Width (px)</label>
-                    <input type="number" id="card-width" value="200" min="100" max="500">
-                </div>
+            <div class="control-group">
+                <h3>Target Card Selection</h3>
+                <select id="card-selector" class="card-selector">
+                    <option value="">-- Select a card --</option>
+                </select>
             </div>
-            <button id="update-style" class="secondary">Apply Style Changes</button>
+            <div class="control-group">
+                <h3>Content Control</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="title-input">Title</label>
+                        <input type="text" id="title-input" placeholder="Update title">
+                    </div>
+                    <div class="form-group">
+                        <label for="summary-input">Summary</label>
+                        <input type="text" id="summary-input" placeholder="Update summary">
+                    </div>
+                    <div class="form-group">
+                        <label for="author-input">Author</label>
+                        <input type="text" id="author-input" placeholder="Update author">
+                    </div>
+                    <div class="form-group">
+                        <label for="date-input">Date</label>
+                        <input type="text" id="date-input" placeholder="Update date">
+                    </div>
+                </div>
+                <button id="update-content" class="secondary">Apply Content Changes</button>
+            </div>
+            <div class="control-group">
+                <h3>Style Control</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="border-color">Border Color</label>
+                        <input type="color" id="border-color" value="#e2e8f0">
+                    </div>
+                    <div class="form-group">
+                        <label for="hover-color">Hover Border Color</label>
+                        <input type="color" id="hover-color" value="#3b82f6">
+                    </div>
+                    <div class="form-group">
+                        <label for="border-radius">Border Radius (px)</label>
+                        <input type="number" id="border-radius" value="8" min="0" max="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="loading-bg">Loading Background</label>
+                        <input type="color" id="loading-bg" value="#ffffff">
+                    </div>
+                    <div class="form-group">
+                        <label for="spinner-color">Spinner Color</label>
+                        <input type="color" id="spinner-color" value="#3b82f6">
+                    </div>
+                    <div class="form-group">
+                        <label for="loading-text">Loading Text</label>
+                        <input type="text" id="loading-text" value="Processing...">
+                    </div>
+                    <div class="form-group">
+                        <label for="card-width">Card Width (px)</label>
+                        <input type="number" id="card-width" value="200" min="100" max="500">
+                    </div>
+                </div>
+                <button id="update-style" class="secondary">Apply Style Changes</button>
+            </div>
         </div>
     </div>
-    <div class="cards-container" id="cards-container"></div>
     <script type="module">
         import ShadowCard from './dist/index.esm.js';
 
@@ -218,6 +225,9 @@
                     </div>
                 `,
                 css: `
+                    #inner-container {
+                        width:320px;
+                    }
                     .article-card {
                         background: linear-gradient(135deg, #3B82F6, #4F46E5);
                         padding: 1rem;
@@ -264,6 +274,7 @@
                 `,
                 css: `
                     .product-card {
+                        width:960px;
                         background: white;
                         border: 1px solid #eee;
                         padding: 1rem;
@@ -291,6 +302,464 @@
                 styles: {
                     border: '1px solid #e2e8f0',
                     borderRadius: '8px',
+                    hoverBorderColor: '#3b82f6',
+                    loadingBg: '#ffffff',
+                    loadingText: 'Processing...',
+                    loadingSpinnerColor: '#3b82f6'
+                }
+            }, {
+                container: document.getElementById('cards-container'),
+                targetWidth: 200,
+                html: `
+                   <div class="container" style="transform-origin: top left; ">
+            <div class="sd-post-card">
+                <!-- 内容保持不变 -->
+                <div class="sd-post-card-decoration sd-post-card-circle"
+                    style="width: 10rem; height: 10rem; top: -2.5rem; right: -2.5rem;"></div>
+                <div class="sd-post-card-decoration sd-post-card-square"
+                    style="width: 6rem; height: 6rem; bottom: -1.5rem; left: -1.5rem;"></div>
+                <div class="sd-post-card-bg">
+                    <img src="https://p3-doubao-search-sign.byteimg.com/labis/20b35a7555983733c1ee638cd558da3a~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782305&amp;x-signature=ktKly52Djcoas4GpV9bkHp7f0eo%3D"
+                        alt="Blue abstract background">
+                    <div class="sd-post-card-gradient"></div>
+                </div>
+                <div class="sd-post-card-content">
+                    <!-- 红绿灯 -->
+                    <div class="sd-traffic-light">
+                        <span class="sd-traffic-light-dot sd-traffic-light-red"></span>
+                        <span class="sd-traffic-light-dot sd-traffic-light-yellow"></span>
+                        <span class="sd-traffic-light-dot sd-traffic-light-green"></span>
+                    </div>
+                    <!-- 头部图片 -->
+                    <div class="sd-post-card-header">
+                        <img src="https://p11-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1890973675594580007~tplv-be4g95zd3a-image.jpeg?rk3s=542c0f93&amp;x-expires=1777782532&amp;x-signature=njZlg5LHrXt7HU6em3ZrX9xWW%2Bs%3D"
+                            alt="Digital design header">
+                        <div class="sd-post-card-header-gradient"></div>
+                        <div class="sd-post-card-meta">
+                            <span>Jun 15, 2025</span>
+                            <span>5 min read</span>
+                        </div>
+                    </div>
+                    <!-- 标题 -->
+                    <h3 class="sd-post-card-title"> The Future of Digital Design: Trends Shaping Our Digital World </h3>
+                    <!-- 作者信息 -->
+                    <div class="sd-post-card-author">
+                        <div class="sd-post-card-avatar">JD</div>
+                        <div class="sd-post-card-author-info">
+                            <p class="sd-post-card-author-name">Jane Doe</p>
+                            <p class="sd-post-card-author-role">Digital Design Lead @ CreativeStudio</p>
+                        </div>
+                        <button class="sd-post-card-follow">
+                            <i class="fa fa-plus"></i> Follow </button>
+                    </div>
+                    <!-- 文章内容 -->
+                    <div class="sd-post-card-content-text">
+                        <p><a href="https://wwww.baidu.com" target="_blank">design is evolving at an </a> <span
+                                class="sd-post-card-underline-dashed">unprecedented pace</span>. With new technologies
+                            emerging every day, designers are challenged to stay ahead of the curve and create
+                            experiences that are not only visually appealing but also highly functional.</p>
+                        <p>One of the most significant trends in recent years is the shift towards <span
+                                class="sd-post-card-underline-solid">minimalist design</span>. This approach focuses on
+                            removing unnecessary elements and focusing on what's essential, resulting in cleaner, more
+                            intuitive interfaces.</p>
+                        <p>Another key development is the integration of <span class="sd-post-card-underline-dotted">3D
+                                elements</span> into 2D designs. This adds depth and dimension to digital experiences,
+                            making them more engaging and immersive.</p>
+                        <p><span class="sd-post-card-highlight">As we look to the future, it's clear that digital design
+                                will continue to evolve and adapt to new technologies and user needs.</span> The
+                            designers who will thrive are those who embrace change and are willing to experiment with
+                            new ideas and approaches.</p>
+                    </div>
+                    <!-- 重点内容高亮 -->
+                    <div class="sd-post-card-quote">
+                        <p>"<span class="sd-post-card-underline-solid">Design is not just what it looks like and feels
+                                like. Design is how it works.</span>" <span class="sd-post-card-quote-author">— Steve
+                                Jobs</span></p>
+                    </div>
+                    <!-- 标签 -->
+                    <div class="sd-post-card-tags">
+                        <span class="sd-post-card-tag">Digital Design</span>
+                        <span class="sd-post-card-tag">UX Trends</span>
+                        <span class="sd-post-card-tag">2025 Forecast</span>
+                        <span class="sd-post-card-tag">Innovation</span>
+                    </div>
+                    <!-- 卡片底部 -->
+                    <div class="sd-post-card-footer">
+                        <div class="sd-post-card-share">
+                            <button class="sd-post-card-share-btn"><i class="fa fa-facebook"></i></button>
+                            <button class="sd-post-card-share-btn"><i class="fa fa-twitter"></i></button>
+                            <button class="sd-post-card-share-btn"><i class="fa fa-linkedin"></i></button>
+                        </div>
+                        <div class="sd-post-card-stats">
+                            <span class="sd-post-card-stat"><i class="fa fa-heart"></i> 15.8k</span>
+                            <span class="sd-post-card-stat"><i class="fa fa-comment"></i> 342</span>
+                            <span class="sd-post-card-stat"><i class="fa fa-bookmark"></i> 2.1k</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                `,
+                css: `
+                    .container {
+                width: 640px;
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Montserrat', sans-serif;
+                background-color: #F9FAFB;
+                color: #111827;
+                transition: background-color 0.3s ease, color 0.3s ease;
+                /* max-width: 1200px; */
+                transform-origin: left top;
+                /* transform: scale(0.48); */
+                /* padding: 2rem; */
+            }
+
+            /* 场景一：产文转发卡样式 */
+            .sd-post-card {
+                position: relative;
+                /* max-width: 4xl; */
+                margin: 0 auto;
+                border-radius: 1rem;
+                overflow: hidden;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                transition: all 0.3s ease-in-out;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .sd-post-card:hover {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                transform: scale(1.02);
+            }
+
+            .sd-post-card::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: 1rem;
+                background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            .sd-post-card:hover::after {
+                opacity: 1;
+            }
+
+            .sd-post-card-decoration {
+                position: absolute;
+                z-index: -1;
+                opacity: 0.2;
+            }
+
+            .sd-post-card-circle {
+                border-radius: 50%;
+                background-color: white;
+            }
+
+            .sd-post-card-square {
+                background-color: white;
+                transform: rotate(45deg);
+            }
+
+            .sd-post-card-bg {
+                position: absolute;
+                inset: 0;
+                overflow: hidden;
+            }
+
+            .sd-post-card-bg img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                opacity: 0.4;
+            }
+
+            .sd-post-card-gradient {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(to bottom right, #3B82F6, #4F46E5);
+            }
+
+            .sd-post-card-content {
+                position: relative;
+                padding: 2rem;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
+
+            .sd-traffic-light {
+                display: flex;
+                gap: 0.375rem;
+                position: absolute;
+                top: 1rem;
+                left: 1rem;
+                z-index: 10;
+            }
+
+            .sd-traffic-light-dot {
+                width: 0.625rem;
+                height: 0.625rem;
+                border-radius: 50%;
+            }
+
+            .sd-traffic-light-red {
+                background-color: #EF4444;
+            }
+
+            .sd-traffic-light-yellow {
+                background-color: #EAB308;
+            }
+
+            .sd-traffic-light-green {
+                background-color: #22C55E;
+            }
+
+            .sd-post-card-header {
+                position: relative;
+                width: 100%;
+                height: 12rem;
+                border-radius: 0.5rem;
+                overflow: hidden;
+                margin-bottom: 1.5rem;
+            }
+
+            .sd-post-card-header img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .sd-post-card-header-gradient {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(to top, rgba(30, 58, 138, 0.7), transparent);
+            }
+
+            .sd-post-card-meta {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 1rem;
+                display: flex;
+                justify-content: flex-end;
+                align-items: center;
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 0.875rem;
+            }
+
+            .sd-post-card-meta span:not(:last-child)::after {
+                content: '•';
+                margin: 0 0.5rem;
+            }
+
+            .sd-post-card-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: white;
+                margin-bottom: 1.5rem;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                line-height: 1.2;
+            }
+
+            .sd-post-card-author {
+                display: flex;
+                align-items: center;
+                padding: 1rem;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 0.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .sd-post-card-avatar {
+                width: 3rem;
+                height: 3rem;
+                border-radius: 50%;
+                background: linear-gradient(to right, #60A5FA, #4F46E5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 1.25rem;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .sd-post-card-author-info {
+                margin-left: 1rem;
+            }
+
+            .sd-post-card-author-name {
+                font-weight: 600;
+                color: white;
+            }
+
+            .sd-post-card-author-role {
+                font-size: 0.875rem;
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            .sd-post-card-follow {
+                margin-left: auto;
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: none;
+                border-radius: 9999px;
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            .sd-post-card-follow:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+
+            .sd-post-card-follow i {
+                margin-right: 0.5rem;
+            }
+
+            .sd-post-card-content-text {
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 2rem;
+                flex-grow: 1;
+                line-height: 1.6;
+            }
+
+            .sd-post-card-content-text p {
+                margin-bottom: 1rem;
+            }
+
+            .sd-post-card-underline-dashed {
+                border-bottom: 2px dashed rgba(255, 255, 255, 0.7);
+                text-underline-offset: 2px;
+            }
+
+            .sd-post-card-underline-solid {
+                text-decoration: underline;
+                text-decoration-thickness: 2px;
+                text-decoration-color: rgba(255, 255, 255, 0.7);
+                text-underline-offset: 2px;
+            }
+
+            .sd-post-card-underline-dotted {
+                text-decoration: underline;
+                text-decoration-style: dotted;
+                text-decoration-thickness: 2px;
+                text-decoration-color: rgba(255, 255, 255, 0.7);
+                text-underline-offset: 2px;
+            }
+
+            .sd-post-card-highlight {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                padding: 0.25rem 0.5rem;
+                border-radius: 0.25rem;
+            }
+
+            .sd-post-card-quote {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 0.5rem;
+                padding: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .sd-post-card-quote p {
+                color: white;
+                font-weight: 600;
+                font-size: 1.125rem;
+                font-style: italic;
+                line-height: 1.6;
+            }
+
+            .sd-post-card-quote-author {
+                display: block;
+                text-align: right;
+                font-size: 0.875rem;
+                color: rgba(255, 255, 255, 0.8);
+                margin-top: 0.5rem;
+            }
+
+            .sd-post-card-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .sd-post-card-tag {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 0.75rem;
+                padding: 0.375rem 0.75rem;
+                border-radius: 9999px;
+                transition: background-color 0.3s ease;
+                cursor: pointer;
+            }
+
+            .sd-post-card-tag:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .sd-post-card-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-top: 1rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .sd-post-card-share {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .sd-post-card-share-btn {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 2rem;
+                height: 2rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            .sd-post-card-share-btn:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .sd-post-card-stats {
+                display: flex;
+                gap: 1rem;
+            }
+
+            .sd-post-card-stat {
+                color: white;
+                font-size: 0.875rem;
+                display: flex;
+                align-items: center;
+            }
+
+            .sd-post-card-stat i {
+                margin-right: 0.25rem;
+            }
+                `,
+                styles: {
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    marginWitdh: 'auto',
+                    marginHeight: '8px',
                     hoverBorderColor: '#3b82f6',
                     loadingBg: '#ffffff',
                     loadingText: 'Processing...',
@@ -351,6 +820,7 @@
                 `,
                 css: `
                     .dynamic-card {
+                        width:600px;
                         background: #f0fff4;
                         border: 1px solid #c6f6d5;
                         padding: 1rem;
@@ -369,6 +839,8 @@
                 styles: {
                     border: '1px solid #e2e8f0',
                     borderRadius: '8px',
+                    marginWitdh: 'auto',
+                    marginHeight: '8px',
                     hoverBorderColor: '#3b82f6',
                     loadingBg: '#ffffff',
                     loadingText: 'Loading...',
@@ -419,6 +891,8 @@
             }
 
             const styleUpdates = {
+                marginWitdh: 'auto',
+                marginHeight: '8px',
                 borderColor: document.getElementById('border-color').value,
                 hoverBorderColor: document.getElementById('hover-color').value,
                 borderRadius: `${document.getElementById('border-radius').value}px`,

@@ -109,6 +109,7 @@ export class ShadowCard {
         shadow.innerHTML = `
         <style>
         :host {
+            all: initial;
             display: block;
             border: var(--shadow-card-border, 2px solid var(--shadow-card-border-color));
             border-radius: var(--shadow-card-border-radius, 6px);
@@ -118,6 +119,7 @@ export class ShadowCard {
             transition: border 0.3s ease;
             user-select: none;
             position: relative;
+            margin: ${this.options?.styles?.marginHeight || "8px"} ${this.options?.styles?.marginWitdh || "auto"};
         }
         
         :host(:hover) {
@@ -125,7 +127,8 @@ export class ShadowCard {
         }
         
         #inner-container {
-            width: 100%;
+            // width: 100%;
+            width:640px;
             transform-origin: top left;
             transform: scale(1);
         }
@@ -174,8 +177,59 @@ export class ShadowCard {
         this.boundClickHandler = (e) => this.handleClick(e);
         shadow.addEventListener('input', this.boundInputHandler);
         shadow.addEventListener('click', this.boundClickHandler);
-
+        this.boundPasteHandler = (e) => this.handlePaste(e);
+        shadow.addEventListener('paste', this.boundPasteHandler);
         return element;
+    }
+
+    // Handles paste events for contenteditable elements to enforce plain text only
+    handlePaste(e) {
+        // Exit early if target isn't an editable element or event is already handled
+        if (!e.target?.isContentEditable || e.defaultPrevented) return;
+
+        // Prevent default paste behavior to block rich content
+        e.preventDefault();
+
+        try {
+            // Get clipboard data source (standard Clipboard API or legacy IE support)
+            const clipboardData = e.clipboardData || window.clipboardData;
+            if (!clipboardData) throw new Error('Clipboard access unavailable');
+
+            // Extract only plain text from clipboard (ignores HTML, images, etc.)
+            const plainText = clipboardData.getData('text') || '';
+            if (plainText.trim() === '') return; // Do nothing if clipboard is empty
+
+            // Get current selection/cursor position
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) {
+                // Fallback: append to end if no valid selection
+                e.target.textContent += plainText;
+                return;
+            }
+
+            // Remove any currently selected content before pasting
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+
+            // Create text node with clipboard content
+            const textNode = document.createTextNode(plainText);
+
+            // Insert text at cursor position
+            range.insertNode(textNode);
+
+            // Move cursor to end of pasted text for natural continuation
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+
+            // Update selection to new cursor position
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+        } catch (error) {
+            // Graceful fallback: append text to end if main logic fails
+            console.warn('Plain text paste enforcement failed:', error);
+            e.target.textContent += (e.clipboardData || window.clipboardData)?.getData('text') || '';
+        }
     }
 
     /**
@@ -429,32 +483,38 @@ export class ShadowCard {
                 this.options.targetWidth = targetWidth;
             }
 
-            // ---------- Calculate and apply width immediately ----------
-            // Get initial container width (may be incomplete, but enough for target width)
-            const initialWidth = Math.max(1, this.innerContainer.offsetWidth);
-            const scaleForWidth = this.options.targetWidth / initialWidth;
-            this.element.style.width = `${this.options.targetWidth}px`; // Enforce target width immediately
-            // -----------------------------------------------------------
+            // 1. Force setting of the width of the card container (the outer container)
+            this.element.style.width = `${this.options.targetWidth}px`;
+            this.element.style.height = 'auto'; // 先重置高度
 
-            // Wait for images to load to calculate accurate height
+            // 2. Wait for the image to load completely to obtain the accurate dimensions
             await this.waitForImages();
 
-            // Ensure minimum dimensions after images load
-            if (this.innerContainer.offsetWidth === 0) {
+            // 3. Calculate the scaling ratio (based on the original width of the internal content)
+            const originalContentWidth = this.innerContainer.offsetWidth;
+            if (originalContentWidth === 0) {
                 this.innerContainer.style.minWidth = '1px';
                 this.innerContainer.style.minHeight = '1px';
+                // Recalculate the width to avoid division by zero
+                originalContentWidth = Math.max(1, this.innerContainer.offsetWidth);
             }
 
-            // Final scaling with accurate dimensions
-            const { scale, height } = calculateScaling(
-                this.innerContainer,
-                this.options.targetWidth
-            );
+            // Core: Calculate the scaling ratio (target width / original content width)
+            const scale = this.options.targetWidth / originalContentWidth;
 
+            // 4. Apply scaling and adjust height
             this.innerContainer.style.transform = `scale(${scale})`;
-            this.element.style.height = `${Math.max(1, height)}px`; // Apply final height
+            this.innerContainer.style.transformOrigin = 'top left'; // Ensure that the scaling starts from the top left corner
 
-            // Hide loading state after layout completes
+            // Calculate the actual height after scaling (original height * scaling ratio)
+            const scaledHeight = Math.max(1, this.innerContainer.offsetHeight * scale);
+            this.element.style.height = `${scaledHeight}px`;
+
+            // 5. Ensure that the internal content does not overflow
+            this.innerContainer.style.width = `${this.options.targetWidth / scale}px`; // Reverse the internal width of the scaling
+            this.innerContainer.style.overflow = 'hidden';
+
+            // 6. After the layout is completed, hide the loading status
             requestAnimationFrame(() => {
                 loadingOverlay.classList.add('hidden');
             });
@@ -527,6 +587,7 @@ export class ShadowCard {
         // Remove shadow DOM event listeners
         this.shadow?.removeEventListener('input', this.boundInputHandler);
         this.shadow?.removeEventListener('click', this.boundClickHandler);
+        this.shadow?.removeEventListener('paste', this.boundPasteHandler);
 
         // Remove from DOM
         this.element?.parentNode?.removeChild(this.element);
