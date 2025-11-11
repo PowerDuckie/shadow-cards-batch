@@ -485,7 +485,7 @@ export class ShadowCard {
 
             // 1. Force setting of the width of the card container (the outer container)
             this.element.style.width = `${this.options.targetWidth}px`;
-            this.element.style.height = 'auto'; // 先重置高度
+            this.element.style.height = 'auto';
 
             // 2. Wait for the image to load completely to obtain the accurate dimensions
             await this.waitForImages();
