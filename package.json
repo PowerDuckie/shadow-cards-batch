@@ -1,6 +1,6 @@
 {
     "name": "shadow-cards-batch",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "Batch create and manage editable cards with Shadow DOM isolation",
     "main": "dist/index.cjs.js",
     "module": "dist/index.esm.js",
