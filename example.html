@@ -97,7 +97,7 @@
         .cards-container {
             /* display: flex;
             flex-direction: column; */
-            width: 240px;
+            width: 180px;
             gap: 20px;
             flex-wrap: wrap;
             padding: 10px 0;
@@ -253,7 +253,7 @@
                     summary: 'The integration of AI and Web technologies will change the future...'
                 },
                 styles: {
-                    border: '1px solid #e2e8f0',
+                    border: '2px solid #e2e8f0',
                     borderRadius: '8px',
                     hoverBorderColor: '#3b82f6',
                     loadingBg: '#ffffff',
@@ -303,7 +303,7 @@
                     }
                 `,
                 styles: {
-                    border: '1px solid #e2e8f0',
+                    border: '2px solid #e2e8f0',
                     borderRadius: '8px',
                     hoverBorderColor: '#3b82f6',
                     loadingBg: '#ffffff',
@@ -313,6 +313,7 @@
             }, {
                 container: document.getElementById('cards-container'),
                 targetWidth: 160,
+                editable: true,
                 html: `
                    <div class="container" style="transform-origin: top left; ">
             <div class="sd-post-card">
