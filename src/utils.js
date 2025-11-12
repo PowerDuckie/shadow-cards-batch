@@ -1,4 +1,5 @@
-import { ERROR_MESSAGES } from './constants.js';
+import { ERROR_MESSAGES, ALLOWED_TAGS_MARKDOWN, ALLOWED_ATTRS_MARKDOWN } from './constants.js';
+
 import { v4 as uuidv4 } from 'uuid';
 import DOMPurify from 'dompurify';
 
@@ -8,12 +9,15 @@ import DOMPurify from 'dompurify';
  * @param {string[]} allowedTags
  * @param {string[]} allowedAttrs
  */
-export const sanitizeHtml = (html = '', allowedTags = [], allowedAttrs = []) => {
+export const sanitizeHtml = (html = '', allowedTags = ALLOWED_TAGS_MARKDOWN || [], allowedAttrs = ALLOWED_ATTRS_MARKDOWN || []) => {
     if (!html || typeof html !== 'string') return '';
     try {
         return DOMPurify.sanitize(html, {
             ALLOWED_TAGS: allowedTags,
-            ALLOWED_ATTR: allowedAttrs
+            ALLOWED_ATTR: allowedAttrs,
+            KEEP_CONTENT: true,
+            RETURN_TRUSTED_TYPE: false,
+            USE_PROFILES: { html: true }
         });
     } catch (err) {
         return escapeHtml(html);

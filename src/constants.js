@@ -40,3 +40,34 @@ export const ERROR_MESSAGES = {
     INVALID_TARGET_WIDTH: 'Target width must be a positive number',
     ELEMENT_DESTROYED: 'Card has been destroyed and cannot perform operations'
 };
+
+export const ALLOWED_TAGS_MARKDOWN = [
+    // block-level
+    'p', 'div', 'blockquote', 'pre', 'code', 'hr',
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+
+    // inline text
+    'span', 'a', 'strong', 'em', 'b', 'i', 'u', 's', 'br', 'sub', 'sup',
+
+    // heading
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+
+    // image/media
+    'img', 'figure', 'figcaption',
+
+    // table (common in GitHub Markdown)
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+
+    // code-related
+    'code', 'kbd', 'samp',
+
+    // misc
+    'details', 'summary'
+];
+
+export const ALLOWED_ATTRS_MARKDOWN = [
+    'href', 'title', 'src', 'alt', 'width', 'height',
+    'class', 'id', 'name', 'style',
+    'data-field', 'data-img', 'data-*',
+    'align', 'valign', 'colspan', 'rowspan', 'target', 'rel'
+];

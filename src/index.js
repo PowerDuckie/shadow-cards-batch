@@ -1,5 +1,5 @@
-import { generateUniqueId, Validator } from './utils.js';
-import { DEFAULT_OPTIONS, EVENT_TYPES } from './constants.js';
+import { generateUniqueId, Validator, sanitizeHtml } from './utils.js';
+import { DEFAULT_OPTIONS, EVENT_TYPES, ALLOWED_TAGS_MARKDOWN, ALLOWED_ATTRS_MARKDOWN } from './constants.js';
 
 /**
  * ShadowCard - Production-ready, non-editable card component
@@ -324,12 +324,16 @@ export class ShadowCard {
             Validator.validateHtml(html);
             if (!this.innerContainer) throw new Error('Inner container not found');
 
-            this.innerContainer.innerHTML = html || '';
+            // ---------- sanitize user HTML ----------
+            const safeHtml = sanitizeHtml(html, ALLOWED_TAGS_MARKDOWN, ALLOWED_ATTRS_MARKDOWN);
+
+            this.innerContainer.innerHTML = safeHtml || '';
             this.innerContainer.offsetHeight; // Force reflow
             this._scheduleResize();
             return this;
         } catch (err) { this.dispatchError(err.message || String(err)); return this; }
     }
+
 
     setStyle(css, reset = false) {
         if (this.isDestroyed) return this;
