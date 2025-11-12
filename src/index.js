@@ -243,7 +243,7 @@ export class ShadowCard {
         </style>
         <div id="loading-overlay">
             <div class="loading-spinner"></div>
-            <span class="loading-text">${this.options?.styles?.loadingText || 'Loading...'}</span>
+            <span class="loading-text">${this.options?.styles?.loadingText || ''}</span>
         </div>
         <div id="inner-container"></div>
         `;
