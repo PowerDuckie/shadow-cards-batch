@@ -10,7 +10,8 @@
         ".": {
             "import": "./dist/index.esm.js",
             "require": "./dist/index.cjs.js",
-            "browser": "./dist/index.umd.js"
+            "browser": "./dist/index.umd.js",
+            "types": "./types/index.d.ts"
         }
     },
     "files": [
