@@ -41,6 +41,7 @@ export const ERROR_MESSAGES = {
     ELEMENT_DESTROYED: 'Card has been destroyed and cannot perform operations'
 };
 
+// HTML tags compatible with MARKDOWN
 export const ALLOWED_TAGS_MARKDOWN = [
     // block-level
     'p', 'div', 'blockquote', 'pre', 'code', 'hr',
@@ -65,6 +66,7 @@ export const ALLOWED_TAGS_MARKDOWN = [
     'details', 'summary'
 ];
 
+// HTML ATTRS compatible with MARKDOWN
 export const ALLOWED_ATTRS_MARKDOWN = [
     'href', 'title', 'src', 'alt', 'width', 'height',
     'class', 'id', 'name', 'style',
