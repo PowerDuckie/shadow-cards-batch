@@ -26,6 +26,8 @@ export class ShadowCard {
             this.isDestroyed = false;
             this.data = this.options.data;
             this.eventListeners = new Map();
+            this._isResizing = false;
+            this._pendingResize = false;
             this._resizeDebounce = null;
             this._hideOverlayRaf = null;
 
@@ -58,50 +60,118 @@ export class ShadowCard {
     waitForImages({ timeoutMs = 5000 } = {}) {
         return new Promise(resolve => {
             try {
+                if (this.isDestroyed || !this.shadow) {
+                    return resolve({ success: false, error: 'destroyed', errorCount: 0, total: 0 });
+                }
+
                 const images = Array.from(this.shadow.querySelectorAll('img'));
-                if (!images.length) return resolve();
+                if (!images.length) {
+                    return resolve({ success: true, errorCount: 0, total: 0 });
+                }
 
                 let loadedCount = 0;
+                let errorCount = 0;
                 let resolved = false;
+                const errors = [];
+                let timer = null;
+
+                const finish = (result) => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (timer) clearTimeout(timer);
+                    // cleanup listeners
+                    images.forEach(img => {
+                        try {
+                            img.removeEventListener('load', onLoad);
+                            img.removeEventListener('error', onError);
+                        } catch (e) { /* ignore */ }
+                    });
+                    resolve(result);
+                };
 
                 const checkDone = () => {
                     loadedCount++;
                     if (loadedCount >= images.length && !resolved) {
-                        resolved = true;
-                        clearTimeout(timer);
-                        resolve();
+                        const success = errorCount === 0;
+                        finish({ success, errorCount, total: images.length, errors: errors.length ? errors.slice() : undefined });
                     }
                 };
 
-                const onLoadOrError = ev => {
-                    ev.currentTarget.removeEventListener('load', onLoadOrError);
-                    ev.currentTarget.removeEventListener('error', onLoadOrError);
+                const onLoad = ev => {
+                    const img = ev.currentTarget;
+                    try {
+                        img.removeEventListener('load', onLoad);
+                        img.removeEventListener('error', onError);
+                    } catch (e) { }
                     checkDone();
                 };
 
+                const onError = ev => {
+                    const img = ev.currentTarget;
+                    try {
+                        img.removeEventListener('load', onLoad);
+                        img.removeEventListener('error', onError);
+                    } catch (e) { }
+                    // avoid double-counting
+                    if (img.dataset._scLoadError) return checkDone();
+                    img.dataset._scLoadError = 'true';
+                    errorCount++;
+                    try { errors.push(img.currentSrc || img.src || '<unknown>'); } catch (e) { }
+                    // visual feedback via class (prefer CSS class over inline styles)
+                    try { img.classList.add('shadowcard-img-error'); } catch (e) { }
+                    // notify once per failed image (string message to match existing dispatchError)
+                    try { this.dispatchError(`Image failed to load: ${img.currentSrc || img.src || '<unknown>'}`); } catch (e) { }
+                    checkDone();
+                };
+
+                // Attach listeners or handle already-complete images.
                 images.forEach(img => {
-                    if (img.complete && img.naturalWidth) checkDone();
-                    else {
-                        img.addEventListener('load', onLoadOrError, { once: true });
-                        img.addEventListener('error', onLoadOrError, { once: true });
+                    try {
+                        if (img.complete) {
+                            // ensure handlers run after timer/listeners are set up
+                            queueMicrotask(() => {
+                                if (img.naturalWidth) onLoad({ currentTarget: img });
+                                else onError({ currentTarget: img });
+                            });
+                        } else {
+                            img.addEventListener('load', onLoad, { once: true });
+                            img.addEventListener('error', onError, { once: true });
+                        }
+                    } catch (e) {
+                        // treat access errors as image failures
+                        if (!img.dataset?._scLoadError) {
+                            img.dataset._scLoadError = 'true';
+                            errorCount++;
+                            try { errors.push('<access-error>'); } catch (e) { }
+                        }
+                        // still count as "processed"
+                        checkDone();
                     }
                 });
 
-                const timer = setTimeout(() => {
+                // Start timeout after listeners are attached to avoid race.
+                timer = setTimeout(() => {
                     if (!resolved) {
-                        resolved = true;
+                        // mark unresolved images as errored (best-effort)
                         images.forEach(img => {
-                            img.removeEventListener('load', onLoadOrError);
-                            img.removeEventListener('error', onLoadOrError);
+                            if (!img.dataset?._scLoadError && !(img.complete && img.naturalWidth)) {
+                                try {
+                                    img.dataset._scLoadError = 'true';
+                                    img.classList.add('shadowcard-img-error');
+                                } catch (e) { }
+                            }
                         });
-                        resolve();
+                        try { this.dispatchError(`Image load timeout after ${Number(timeoutMs) || 5000}ms`); } catch (e) { }
+                        finish({ success: false, timeout: true, errorCount, total: images.length, errors: errors.length ? errors.slice() : undefined });
                     }
                 }, Number(timeoutMs) || 5000);
-            } catch {
-                resolve();
+
+            } catch (err) {
+                resolve({ success: false, error: err?.message || String(err), errorCount: 0, total: 0 });
             }
         });
     }
+
 
     // ---------- Host element creation ----------
     _createHostElement() {
@@ -191,7 +261,14 @@ export class ShadowCard {
         Object.entries(this._getStyleMappings()).forEach(([key, cssVar]) => {
             const val = this.options.styles[key];
             if (val !== undefined) {
-                try { element.style.setProperty(cssVar, val); } catch { }
+                try {
+                    if (val == null) {
+                        element.style.removeProperty(cssVar);
+                    } else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+                        element.style.setProperty(cssVar, String(val));
+                    }
+                    // ignore complex objects
+                } catch (e) { /* swallow */ }
             }
         });
     }
@@ -218,7 +295,19 @@ export class ShadowCard {
         if (this.isDestroyed || !vars) return this;
         Object.entries(vars).forEach(([key, val]) => {
             const cssVar = this._getStyleMappings()[key];
-            if (cssVar && val !== undefined) this.element.style.setProperty(cssVar, val);
+            if (cssVar && val !== undefined) {
+                try {
+                    if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+                        this.element.style.setProperty(cssVar, String(val));
+                    } else if (val == null) {
+                        this.element.style.removeProperty(cssVar);
+                    } else {
+                        // ignore complex objects
+                    }
+                } catch (e) {
+                    // ignore invalid CSS values
+                }
+            }
         });
         if (vars.loadingText) {
             const el = this.shadow.querySelector('.loading-text');
@@ -226,6 +315,7 @@ export class ShadowCard {
         }
         return this;
     }
+
 
     // ---------- Content / HTML / CSS ----------
     setHTML(html) {
@@ -243,15 +333,37 @@ export class ShadowCard {
 
     setStyle(css, reset = false) {
         if (this.isDestroyed) return this;
+        try {
+            // prefer constructable stylesheet if supported
+            if (typeof CSSStyleSheet !== 'undefined' && this.shadow?.adoptedStyleSheets !== undefined) {
+                if (!this._adoptedSheet || reset) {
+                    this._adoptedSheet = new CSSStyleSheet();
+                    this._adoptedSheet.replaceSync(css || '');
+                } else {
+                    // append new rules (simple concat)
+                    const combined = reset ? (css || '') : `${this._adoptedSheet.cssText}\n${css || ''}`;
+                    this._adoptedSheet.replaceSync(combined);
+                }
+                // assign once
+                this.shadow.adoptedStyleSheets = [this._adoptedSheet];
+                return this;
+            }
+        } catch (e) {
+            // fallthrough to style element fallback
+        }
+
+        // fallback: style element
         let styleEl = this.shadow.querySelector('#custom-style');
         if (!styleEl) {
             styleEl = document.createElement('style');
             styleEl.id = 'custom-style';
             this.shadow.insertBefore(styleEl, this.innerContainer);
+            this._styleEl = styleEl;
         }
-        styleEl.textContent = reset ? css : `${styleEl.textContent}\n${css}`;
+        styleEl.textContent = reset ? (css || '') : `${styleEl.textContent || ''}\n${css || ''}`;
         return this;
     }
+
 
     setContent(data) {
         if (this.isDestroyed || !data) return this;
@@ -272,43 +384,108 @@ export class ShadowCard {
     // ---------- Resize ----------
     async _doResize(targetWidth) {
         if (this.isDestroyed) return;
+
+        // --- Merge pending resize if currently resizing ---
+        if (this._isResizing) {
+            const explicitTarget = (targetWidth !== undefined && Number.isFinite(Number(targetWidth)))
+                ? Number(targetWidth)
+                : undefined;
+
+            if (explicitTarget !== undefined) {
+                this._pendingTargetWidth = explicitTarget;
+            }
+            this._pendingResize = true;
+            return;
+        }
+
+        // --- Validate target width ---
+        const requestedWidth = Number(targetWidth ?? this.options.targetWidth);
+        if (!Number.isFinite(requestedWidth) || requestedWidth < 160) return;
+        const targetW = Math.min(1200, requestedWidth);
+
+        this._isResizing = true;
+        this._pendingResize = false;
+        this._pendingTargetWidth = null;
+
         const overlay = this.shadow?.querySelector('#loading-overlay');
-        overlay?.classList.remove('hidden');
 
         try {
-            const targetW = Number(targetWidth ?? this.options.targetWidth) || 160;
+            // --- Step 1: Show overlay and set target width immediately ---
             this.element.style.width = `${targetW}px`;
-            this.element.style.height = 'auto';
+            overlay?.classList.remove('hidden');
 
-            await Promise.race([
-                this.waitForImages(),
-                new Promise(res => setTimeout(res, 5000))
+            // --- Step 2: Wait for images to load before measuring ---
+            const imgResult = await Promise.race([
+                this.waitForImages({ timeoutMs: 5000 }),
+                new Promise(resolve => setTimeout(
+                    () => resolve({ success: false, timeout: true, errorCount: 0 }),
+                    5000
+                ))
             ]);
 
-            this.innerContainer.style.transform = 'scale(1)';
-            const rect = this.innerContainer.getBoundingClientRect();
-            const origW = Math.max(1, rect.width || this.innerContainer.offsetWidth || 1);
-            const origH = Math.max(1, rect.height || this.innerContainer.offsetHeight || 1);
+            if (!imgResult.success) {
+                const errorMsg = imgResult.timeout
+                    ? `Image load timed out after 5s`
+                    : `Images failed to load (${imgResult.errorCount || 0} errors)`;
+                this.dispatchError(errorMsg);
+            }
 
-            const scale = Math.min(1, targetW / origW);
-            const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+            // --- Step 3: Measure original content dimensions ---
+            if (!this._originalWidth || !this._originalHeight) {
+                try {
+                    this.innerContainer.style.transform = 'scale(1)';
+                    const rect = this.innerContainer.getBoundingClientRect();
+                    this._originalWidth = Math.max(1, rect.width || this.innerContainer.offsetWidth || 1);
+                    this._originalHeight = Math.max(1, rect.height || this.innerContainer.offsetHeight || 1);
+                } catch (err) {
+                    this.dispatchError(`Failed to measure container: ${err.message}`);
+                    this._originalWidth = targetW;
+                    this._originalHeight = 100;
+                }
+            }
 
-            this.innerContainer.style.transform = `scale(${safeScale})`;
-            this.innerContainer.style.transformOrigin = 'top left';
+            // --- Step 4: Calculate scale ---
+            const rawScale = targetW / this._originalWidth;
+            const clampedScale = Math.min(1, Math.max(0.2, rawScale));
+            const finalScale = Number.isFinite(clampedScale) && clampedScale > 0 ? clampedScale : 1;
 
-            const scaledH = Math.max(1, Math.round(origH * safeScale));
+            // --- Step 5: Set final container height immediately ---
+            const scaledH = Math.round(this._originalHeight * finalScale) + 0.5;
             this.element.style.height = `${scaledH}px`;
-            this.innerContainer.style.width = `${Math.round(targetW / safeScale)}px`;
-            this.innerContainer.style.overflow = 'hidden';
 
+            // --- Step 6: Apply inner content scaling ---
+            requestAnimationFrame(() => {
+                this.innerContainer.style.transform = `scale(${finalScale})`;
+                this.innerContainer.style.transformOrigin = 'top left';
+                const adjustedWidth = Math.round(targetW / finalScale) + 0.5;
+                this.innerContainer.style.width = `${adjustedWidth}px`;
+                this.innerContainer.style.overflow = 'hidden';
+            });
+
+            // --- Step 7: Hide overlay after render ---
             if (this._hideOverlayRaf) cancelAnimationFrame(this._hideOverlayRaf);
             this._hideOverlayRaf = requestAnimationFrame(() => {
                 overlay?.classList.add('hidden');
                 this._hideOverlayRaf = null;
             });
+
         } catch (err) {
             overlay?.classList.add('hidden');
-            this.dispatchError(err?.message || String(err));
+            this.dispatchError(`Resize failed: ${err.message || String(err)}`);
+        } finally {
+            this._isResizing = false;
+
+            // --- Step 8: Handle pending resize ---
+            if (this._pendingResize) {
+                const pendingTarget = this._pendingTargetWidth;
+                this._pendingResize = false;
+                this._pendingTargetWidth = null;
+                setTimeout(() => {
+                    try { this._doResize(pendingTarget); } catch (e) {
+                        this.dispatchError(`Failed to process pending resize: ${e.message}`);
+                    }
+                }, 0);
+            }
         }
     }
 
@@ -321,32 +498,79 @@ export class ShadowCard {
     }
 
     // ---------- Event delegation ----------
+    // Delegated click handler inside the shadow root.
+    // Uses composedPath when available, falls back to manual path traversal.
+    // Passes a stopPropagation helper in the event detail so consumers can stop outer handling.
     _handleClickDelegated(event) {
         if (this.isDestroyed || !this.shadow) return;
 
-        let target = this.shadow.elementFromPoint(event.clientX, event.clientY);
-        let dispatched = false;
+        // helper exposed to consumers so they can stop propagation if they want
+        const stopPropagation = () => {
+            try { event.stopPropagation(); } catch (e) { /* ignore */ }
+        };
 
-        while (target && target !== this.shadow && !dispatched) {
-            if (target.tagName === 'IMG' && target.hasAttribute('data-img')) {
+        // Build path: prefer composedPath() (works across Shadow DOM)
+        let path = [];
+        if (typeof event.composedPath === 'function') {
+            path = event.composedPath();
+        } else {
+            // fallback: walk up DOM until shadow host
+            let el = event.target;
+            while (el) {
+                path.push(el);
+                if (el === this.shadow.host) break;
+                el = el.assignedSlot || el.parentNode;
+            }
+        }
+
+        // pick first relevant node from path as the initial target
+        let target = (path && path.length) ? path[0] : event.target;
+
+        // final fallback to elementFromPoint if target missing
+        if (!target) {
+            try {
+                target = this.shadow.elementFromPoint(event.clientX, event.clientY) || null;
+            } catch {
+                target = event.target;
+            }
+        }
+
+        let found = false;
+        while (target && target !== this.shadow) {
+            // guard target methods existence (could be text node)
+            const hasAttr = typeof target.hasAttribute === 'function';
+            const tagName = target && target.tagName ? target.tagName.toUpperCase() : '';
+
+            if (tagName === 'IMG' && hasAttr && target.hasAttribute('data-img')) {
                 this.dispatchEvent(EVENT_TYPES.IMG_CLICK, {
                     imgKey: target.getAttribute('data-img'),
-                    element: target
+                    element: target,
+                    stopPropagation
                 });
-                dispatched = true;
-            } else if (target.hasAttribute('data-field')) {
+                found = true;
+                break;
+            } else if (hasAttr && target.hasAttribute('data-field')) {
                 this.dispatchEvent(EVENT_TYPES.FIELD_CLICK, {
                     fieldKey: target.getAttribute('data-field'),
-                    element: target
+                    element: target,
+                    stopPropagation
                 });
-                dispatched = true;
-            } else {
-                this.dispatchEvent(EVENT_TYPES.CARD_CLICK, { element: target });
-                dispatched = true;
+                found = true;
+                break;
             }
-            target = target.parentNode;
+            target = target.assignedSlot || target.parentNode;
+        }
+
+        if (!found) {
+            this.dispatchEvent(EVENT_TYPES.CARD_CLICK, {
+                element: this.element,
+                stopPropagation
+            });
         }
     }
+
+
+
 
     dispatchEvent(type, detail) {
         if (this.isDestroyed || !this.element) return;
@@ -357,7 +581,10 @@ export class ShadowCard {
         }));
     }
 
-    dispatchError(message) { this.dispatchEvent(EVENT_TYPES.ERROR, { message }); }
+    dispatchError(err) {
+        const payload = typeof err === 'string' ? { message: err } : { message: err.message, stack: err.stack };
+        this.dispatchEvent(EVENT_TYPES.ERROR, payload);
+    }
 
     // ---------- Event binding ----------
     on(type, handler) {
@@ -392,16 +619,34 @@ export class ShadowCard {
 
         clearTimeout(this._resizeDebounce);
         if (this._hideOverlayRaf) cancelAnimationFrame(this._hideOverlayRaf);
+        if (this.resizeObserver) this.resizeObserver.disconnect();
 
+        // remove shadow listeners
         this.shadow?.removeEventListener('click', this.boundClickHandler);
-        this.eventListeners.forEach((handlers, type) => handlers.forEach(h => this.element.removeEventListener(type, h)));
+
+        // remove bound custom event listeners
+        this.eventListeners.forEach((handlers, type) =>
+            handlers.forEach(h => this.element.removeEventListener(type, h))
+        );
         this.eventListeners.clear();
 
-        this.element?.remove();
-        this.isDestroyed = true;
+        // replace node in DOM to break references in document
+        try {
+            if (this.element && this.element.parentNode) {
+                this.element.replaceWith(document.createComment('ShadowCard destroyed'));
+            } else if (this.element) {
+                // element not attached; still remove
+                this.element.remove();
+            }
+        } catch (e) {
+            // fallback: remove
+            try { this.element?.remove(); } catch { }
+        }
 
-        // Clear references
+        // clear internal references for GC
         this.element = this.shadow = this.innerContainer = this.data = this.options = null;
+        this.boundClickHandler = null;
+        this.isDestroyed = true;
     }
 
     // ---------- Batch creation ----------
