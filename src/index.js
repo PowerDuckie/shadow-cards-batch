@@ -318,7 +318,7 @@ export class ShadowCard {
 
 
     // ---------- Content / HTML / CSS ----------
-    setHTML(html) {
+    setHTML(html = '') {
         try {
             Validator.validateNotDestroyed(this);
             Validator.validateHtml(html);
@@ -335,7 +335,7 @@ export class ShadowCard {
     }
 
 
-    setStyle(css, reset = false) {
+    setStyle(css = '', reset = false) {
         if (this.isDestroyed) return this;
         try {
             // prefer constructable stylesheet if supported
@@ -369,7 +369,7 @@ export class ShadowCard {
     }
 
 
-    setContent(data) {
+    setContent(data = {}) {
         if (this.isDestroyed || !data) return this;
         this.data = { ...this.data, ...data };
         Object.entries(data).forEach(([field, val]) => {

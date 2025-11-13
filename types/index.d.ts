@@ -12,13 +12,13 @@ export type Nullable<T> = T | null | undefined;
 
 /** Default configuration options for ShadowCard instances */
 export const DEFAULT_OPTIONS: {
-    targetWidth: number;
+    targetWidth?: number;
     container: HTMLElement;
-    editable: boolean;
+    editable?: boolean;
     html: string;
     css: string;
-    data: Record<string, any>;
-    styles: {
+    data?: Record<string, any>;
+    styles?: {
         border: string;
         borderRadius: string;
         hoverBorderColor: string;
