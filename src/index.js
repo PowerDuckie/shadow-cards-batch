@@ -187,6 +187,7 @@ export class ShadowCard {
             :host {
                 all: initial;
                 display: block;
+                background: #ffffff;
                 border: var(--shadow-card-border)!important;
                 border-radius: var(--shadow-card-border-radius, 6px);
                 cursor: pointer;
@@ -195,7 +196,8 @@ export class ShadowCard {
                 transition: border 0.3s ease;
                 user-select: none;
                 position: relative;
-                margin: ${this.options?.styles?.marginHeight || '8px'} ${this.options?.styles?.marginWidth || 'auto'};
+                padding:0;
+                margin: ${this.options?.styles?.marginHeight || '0'} ${this.options?.styles?.marginWidth || '0'};
             }
             :host(:hover) {
                 border-color: var(--shadow-card-hover-border-color, #3b82f6)!important;
