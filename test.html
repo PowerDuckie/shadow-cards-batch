@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>interact + Shadow DOM 示例</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 20px; }
+</style>
+<!-- load interact first -->
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+</head>
+<body>
+  <h3>interact.js + Shadow DOM demo</h3>
+
+  <!-- custom element -->
+  <drag-board></drag-board>
+
+<script>
+/**
+ * <drag-board> - a custom element that uses Shadow DOM and interact.js
+ */
+class DragBoard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    // initial card data (could come from attributes / JSON)
+    this.cards = [
+    //   { x: 20, y: 20, w: 200, h: 140, title: 'Card A' },
+      { x: 260, y: 40, w: 200, h: 140, title: 'Card B' }
+    ];
+  }
+
+  connectedCallback() {
+    // render shadow DOM
+    this.render();
+    // initialize interact on children after render
+    // ensure global `interact` exists
+    if (typeof interact === 'undefined') {
+      console.error('interact.js 未加载 — 请确保在使用前加载 interact.js');
+      return;
+    }
+    this.initInteract();
+  }
+
+  render() {
+    const shadow = this.shadowRoot;
+    shadow.innerHTML = `
+      <style>
+        :host {  all: initial;display: block; width: 900px; margin: 8px auto; }
+        .container {
+          width: 100%;
+          height: 420px;
+          border: 2px dashed #cbd5e1;
+          border-radius: 8px;
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(180deg,#fff,#f8fafc);
+        }
+        .card {
+          position: absolute;
+          width: 200px;
+          height: 140px;
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+          border-radius: 6px;
+          padding: 8px;
+          box-sizing: border-box;
+          touch-action: none;
+          user-select: none;
+        }
+        .header { font-weight: 600; cursor: move; margin-bottom: 6px; }
+        .resize-handle {
+          width: 12px;
+          height: 12px;
+          position: absolute;
+          right: 6px;
+          bottom: 6px;
+          cursor: se-resize;
+          background: rgba(2,6,23,0.06);
+          border-radius: 2px;
+        }
+      </style>
+
+      <div class="container" id="board">
+        ${this.cards.map((c, i) =>
+          `<div class="card" data-x="${c.x}" data-y="${c.y}" style="transform:translate(${c.x}px, ${c.y}px); width:${c.w}px; height:${c.h}px;">
+            <div class="header">${c.title}</div>
+            <div class="body">Drag and resize me</div>
+            <div class="resize-handle" data-handle></div>
+          </div>`
+        ).join('')}
+      </div>
+    `;
+  }
+
+  initInteract() {
+    const shadow = this.shadowRoot;
+    const container = shadow.getElementById('board');
+
+    // constants
+    const minW = 80, minH = 60;
+
+    function setTranslate(el, x, y) {
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      el.setAttribute('data-x', x);
+      el.setAttribute('data-y', y);
+    }
+
+    // get all card elements inside shadow
+    const cards = Array.from(shadow.querySelectorAll('.card'));
+
+    // initialize draggable + resizable for each card element directly
+    cards.forEach(card => {
+      // draggable
+      interact(card).draggable({
+        allowFrom: '.header', // drag only from header; remove if you want whole card draggable
+        listeners: {
+          start (event) { event.target.classList.add('dragging'); },
+          move (event) {
+            const target = event.target;
+            const dx = event.dx, dy = event.dy;
+            const curX = parseFloat(target.getAttribute('data-x')) || 0;
+            const curY = parseFloat(target.getAttribute('data-y')) || 0;
+            let newX = curX + dx;
+            let newY = curY + dy;
+
+            // bounding within container (use container's clientWidth/Height)
+            const rect = target.getBoundingClientRect();
+            const parentRect = container.getBoundingClientRect();
+
+            newX = Math.max(0, Math.min(newX, parentRect.width - rect.width));
+            newY = Math.max(0, Math.min(newY, parentRect.height - rect.height));
+
+            setTranslate(target, newX, newY);
+          },
+          end (event) { event.target.classList.remove('dragging'); }
+        },
+        inertia: false
+      });
+
+      // resizable (right-bottom handle)
+      interact(card).resizable({
+        edges: { left: false, right: true, bottom: true, top: false },
+        listeners: {
+          start (event) { event.target.classList.add('dragging'); },
+          move (event) {
+            const target = event.target;
+            let newW = event.rect.width;
+            let newH = event.rect.height;
+            newW = Math.max(minW, Math.min(newW, container.clientWidth));
+            newH = Math.max(minH, Math.min(newH, container.clientHeight));
+
+            const deltaLeft = event.deltaRect.left;
+            const deltaTop = event.deltaRect.top;
+
+            target.style.width = newW + 'px';
+            target.style.height = newH + 'px';
+
+            const curX = parseFloat(target.getAttribute('data-x')) || 0;
+            const curY = parseFloat(target.getAttribute('data-y')) || 0;
+            const newX = curX + deltaLeft;
+            const newY = curY + deltaTop;
+
+            const rect = target.getBoundingClientRect();
+            let boundedX = Math.max(0, Math.min(newX, container.clientWidth - rect.width));
+            let boundedY = Math.max(0, Math.min(newY, container.clientHeight - rect.height));
+
+            setTranslate(target, boundedX, boundedY);
+          },
+          end (event) { event.target.classList.remove('dragging'); }
+        },
+        modifiers: [
+          interact.modifiers.restrictSize({
+            min: { width: minW, height: minH },
+            max: { width: container.clientWidth, height: container.clientHeight }
+          })
+        ],
+        inertia: false,
+        preserveAspectRatio: false
+      });
+    });
+  }
+}
+
+// define element
+customElements.define('drag-board', DragBoard);
+</script>
+</body>
+</html>
