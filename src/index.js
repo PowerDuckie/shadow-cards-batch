@@ -567,12 +567,12 @@ export class ShadowCard {
             target = target.assignedSlot || target.parentNode;
         }
 
-        if (!found) {
-            this.dispatchEvent(EVENT_TYPES.CARD_CLICK, {
-                element: this.element,
-                stopPropagation
-            });
-        }
+        // if (!found) {
+        this.dispatchEvent(EVENT_TYPES.CARD_CLICK, {
+            element: this.element,
+            stopPropagation
+        });
+        // }
     }
 
 
