@@ -441,6 +441,7 @@ export class ShadowCard {
             // --- Step 3: Measure original content dimensions ---
             if (!this._originalWidth || !this._originalHeight) {
                 try {
+                    if (!this.innerContainer) return; 
                     this.innerContainer.style.transform = 'scale(1)';
                     const rect = this.innerContainer.getBoundingClientRect();
                     this._originalWidth = Math.max(1, rect.width || this.innerContainer.offsetWidth || 1);
@@ -463,6 +464,7 @@ export class ShadowCard {
 
             // --- Step 6: Apply inner content scaling ---
             requestAnimationFrame(() => {
+                if (!this.innerContainer) return; 
                 this.innerContainer.style.transform = `scale(${finalScale})`;
                 this.innerContainer.style.transformOrigin = 'top left';
                 const adjustedWidth = Math.round(targetW / finalScale) + 0.5;
