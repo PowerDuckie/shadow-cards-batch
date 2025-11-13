@@ -187,7 +187,7 @@ export class ShadowCard {
             :host {
                 all: initial;
                 display: block;
-                border: var(--shadow-card-border, 2px) solid var(--shadow-card-border-color);
+                border: var(--shadow-card-border);
                 border-radius: var(--shadow-card-border-radius, 6px);
                 cursor: pointer;
                 overflow: hidden;
