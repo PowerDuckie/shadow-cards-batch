@@ -391,6 +391,7 @@ export class ShadowCard {
     // ---------- Resize ----------
     async _doResize(targetWidth) {
         if (this.isDestroyed) return;
+        if (!this.innerContainer) return;
 
         // --- Merge pending resize if currently resizing ---
         if (this._isResizing) {
