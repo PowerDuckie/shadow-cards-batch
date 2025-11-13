@@ -22,7 +22,7 @@ export class ShadowCard {
             Validator.validateData(this.options.data);
             Validator.validateTargetWidth(this.options.targetWidth);
 
-            this.id = generateUniqueId();
+            this.id = this.options.id || generateUniqueId();
             this.isDestroyed = false;
             this.data = this.options.data;
             this.eventListeners = new Map();
@@ -252,7 +252,8 @@ export class ShadowCard {
 
         // Event delegation
         this.boundClickHandler = e => this._handleClickDelegated(e);
-        shadow.addEventListener('click', this.boundClickHandler);
+        // shadow.addEventListener('click', this.boundClickHandler);
+        element.addEventListener('click', this.boundClickHandler);
 
         return element;
     }
